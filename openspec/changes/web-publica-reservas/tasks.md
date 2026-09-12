@@ -9,11 +9,11 @@
 | Chained PRs recommended | Yes |
 | Suggested split | PR 1 migration/data → PR 2 scaffold/read boundary → PR 3 profile/selector/theme |
 | Delivery strategy | ask-on-risk |
-| Chain strategy | pending user choice |
+| Chain strategy | stacked-to-main (confirmed by the user) |
 
-Decision needed before apply: Yes
+Decision needed before apply: No — resolved as chained PRs with `stacked-to-main`
 Chained PRs recommended: Yes
-Chain strategy: pending
+Chain strategy: stacked-to-main
 400-line budget risk: High
 
 ### Suggested Work Units
@@ -26,8 +26,8 @@ Chain strategy: pending
 
 ## Phase 1: Schema and Data Foundation (PR 1)
 
-- [ ] 1.1 Create the paired `supabase/migrations/phase9_public_barberia_discovery.sql` and `supabase/migrations/phase9_public_barberia_discovery_rollback.sql` IN THIS REPO. Apply the DDL to `vcgyiyrboumimwgdsitf` through the Supabase MCP — additive, against a zero-row database, explicitly approved by the user. Verify unique `public_slug`, nullable `description`, `publicado`, narrow RPC ACLs, and zero `anon` table grants.
-- [ ] 1.2 Operational/data step: publish one demo `Barberia`, one active `Barbero`, and its `Servicio` rows; verify context/catalog fixtures and record rollback deletion. Web implementation is blocked until 1.1 is applied.
+- [x] 1.1 Create the paired `supabase/migrations/phase9_public_barberia_discovery.sql` and `supabase/migrations/phase9_public_barberia_discovery_rollback.sql` IN THIS REPO. Applied the DDL to `vcgyiyrboumimwgdsitf` through the Supabase MCP. **Correction:** the database was NOT empty — `list_tables` row counts are stale `reltuples` estimates and the database actually held 2 `Barberia` and 1 `Barbero` rows. The migration is additive, so this caused no harm, and both pre-existing rows defaulted to `publicado = false`. Verified: unique `public_slug`, nullable `description`, `publicado`, function ACLs `{postgres, service_role}` only, and `anon` holding zero table and function grants.
+- [x] 1.2 Operational/data step: seeded one demo `Barberia` (slug `conexion-barberia`, published), one active `Barbero` linked to the Dashboard-created auth user, and 4 `Servicio` rows. Verified end to end: `public_context` and `public_catalog` return the exact DTO shape with no internal ids; an unpublished slug and a nonexistent slug return the identical `PUBLIC_RESOURCE_NOT_FOUND` body. Rollback: run the rollback migration and delete the seeded rows.
 
 ## Phase 2: Scaffold and Read Infrastructure (PR 2; blocked by Phase 1)
 
