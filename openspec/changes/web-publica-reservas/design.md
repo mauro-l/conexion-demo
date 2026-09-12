@@ -8,7 +8,7 @@ Bootstrap a server-rendered Astro application with React islands. `/b/[slug]` fe
 
 | Decision | Choice | Alternatives / rationale |
 |---|---|---|
-| Migration home | Add `public_slug`, nullable `description`, and `publicado` to `Barberia` in the sibling repo’s `supabase/migrations/phase9_public_barberia_discovery.sql`, with a paired rollback file. Apply there against the verified shared project, before deploying web functions. | The sibling repo is the only observed migration owner and has the linked-project record; the web repo has no Supabase scaffold. Never write the sibling from this change. |
+| Migration home | Add `public_slug`, nullable `description`, and `publicado` to `Barberia` in THIS repo at `supabase/migrations/phase9_public_barberia_discovery.sql`, with a paired rollback file. Apply against the verified shared project `vcgyiyrboumimwgdsitf` before deploying the web functions. | The SDD edit authority for this change covers only the web repo (`allowedEditRoots`), so a sibling-repo migration is not deliverable. The web repo already needs `supabase/` for its Edge Functions, so keeping the migration beside them makes the change self-contained. Cost: schema history is split (phase2/3/4/8 in the sibling, phase9 here). |
 | Public read boundary | Edge Functions use a server-only `service_role` client to invoke narrow `SECURITY INVOKER` RPCs (`public_context`, `public_catalog`) with `REVOKE EXECUTE FROM PUBLIC, anon, authenticated` and `GRANT` only to `service_role`. No generic table proxy; `anon` table grants remain empty. | A private `SECURITY DEFINER` connection would reduce query coupling but needs unobserved private-schema/DB connection infrastructure. This choice is deployable with the existing Supabase client pattern; the service key remains server-only. |
 | Description | Add nullable `Barberia.description`; the RPC maps null to `""`. | Static text would diverge from the required context DTO and hardcoded prototype content. |
 | Publication | `public_slug` is unique and `publicado` defaults false. Reads require both; missing and unpublished slugs return the same 404 body. | Slug-presence-only cannot retain an unpublished slug; a publication table is unnecessary for this single-boolean lifecycle. |
@@ -37,7 +37,7 @@ RPCs select only published rows and DTO fields. Unknown, inactive, and unpublish
 | `src/components/ProfessionalSelector.tsx`, `src/components/ThemeSwitch.tsx`, `src/styles/tokens.css` | Create | Data-driven selector, no-booking interaction, and theme tokens/FOUC prevention. |
 | `src/types/public.ts`, `src/lib/public-api.server.ts` | Create | DTO contracts and server-only Edge Function client. |
 | `supabase/config.toml`, `supabase/functions/public-context/index.ts`, `supabase/functions/public-catalog/index.ts`, `supabase/functions/_shared/http.ts`, `supabase/functions/_shared/supabase.ts` | Create | Anonymous GET functions, CORS, validation, RPC calls, and redacted errors. |
-| `D:\ComIT\proyecto-final-rn\supabase\migrations\phase9_public_barberia_discovery.sql`, `D:\ComIT\proyecto-final-rn\supabase\migrations\phase9_public_barberia_discovery_rollback.sql` | Create elsewhere | Shared-schema migration/RPCs and reversible rollback; delivery is a separate sibling-repo change. |
+| `supabase/migrations/phase9_public_barberia_discovery.sql`, `supabase/migrations/phase9_public_barberia_discovery_rollback.sql` | Create | Shared-schema migration/RPCs and reversible rollback. Applied to the verified project `vcgyiyrboumimwgdsitf` through the Supabase MCP. |
 
 ## Interfaces / Contracts
 
@@ -52,7 +52,7 @@ type Catalog = { services: { name: string; durationMinutes: number; price: numbe
 | Layer | What to Test | Approach |
 |---|---|---|
 | Unit | DTO exact keys, numeric duration, selector one/two entries, theme bootstrap | Vitest and TypeScript `astro check`. |
-| Integration | RPC/Edge contracts, equal unknown/unpublished 404, anonymous REST denial, grants | Staging/branch SQL and function tests; never production. |
+| Integration | RPC/Edge contracts, equal unknown/unpublished 404, anonymous REST denial, grants | Read-only SQL probes against `vcgyiyrboumimwgdsitf`, plus Edge Function contract tests. The migration is applied directly because no non-production branch exists on the current plan. |
 | E2E | `/b/[slug]`, no IDs in HTML, functional selector, light/dark swap | Playwright smoke against the built SSR app. |
 
 ## Threat Matrix
@@ -69,9 +69,9 @@ Routing changes, but no shell, subprocess, VCS, executable classification, or PR
 
 ## Migration / Rollout
 
-Apply the sibling migration in a non-production branch after reconfirming the target ref, publish one approved `Barberia` row through a privileged operator action, deploy RPCs/functions, then deploy web. Rollback clears publication data, drops RPCs/index/columns, and removes web/functions without touching `Servicio` or anon grants. This exceeds the 400-line budget: split delivery after scaffold + read infrastructure, before profile/selector/theme UI; `ask-on-risk` must resolve chaining before apply.
+Apply the migration directly to `vcgyiyrboumimwgdsitf` through the Supabase MCP: no non-production branch exists on the current plan, the database holds zero rows, and the migration is additive — the user explicitly approved this path. Then seed one demo `Barberia` with its `Barbero` and `Servicio` rows, deploy the RPCs and Edge Functions, then deploy the web. Rollback runs `phase9_public_barberia_discovery_rollback.sql`, clears the seed rows, and removes web/functions without touching `Servicio` or the `anon` grants. This exceeds the 400-line budget: `ask-on-risk` has resolved chaining as `stacked-to-main`, split after scaffold + read infrastructure, before profile/selector/theme UI.
 
 ## Open Questions
 
-- [ ] The sibling lacks `supabase/config.toml`; `.temp/linked-project.json` reports ref `ononwmgxbjuksnqupkqi`, while migration comments mention another ref. Reconfirm the target before applying SQL.
+- [x] Target ref RESOLVED as `vcgyiyrboumimwgdsitf`, confirmed by two independent sources: line 2 of every sibling migration file, and live read-only introspection whose schema matched exactly. The `supabase/.temp/linked-project.json` ref `ononwmgxbjuksnqupkqi` is a stale CLI artifact for an unrelated project.
 - [ ] Supply the approved production origin and identify the existing `Barberia` row/description for initial publication.

@@ -20,13 +20,13 @@ Chain strategy: pending
 
 | Unit | Goal | Likely PR | Focused test command | Runtime harness | Rollback boundary |
 |---|---|---|---|---|---|
-| 1 | Apply public schema and seed one demo barber shop | PR 1 | Supabase SQL contract/grant probes | Non-production target `vcgyiyrboumimwgdsitf` | Revert sibling migration and remove seed rows |
+| 1 | Apply public schema and seed one demo barber shop | PR 1 | Supabase SQL contract/grant probes | Live project `vcgyiyrboumimwgdsitf` (read-only probes) | Run the rollback migration and remove seed rows |
 | 2 | Bootstrap Astro SSR and public context/catalog boundary | PR 2 | `astro check`; `astro build`; `npm test` | Built SSR `/b/[slug]` plus Edge Function contract probes | Remove scaffold, functions, RPC calls, and tests |
 | 3 | Deliver profile, catalog, selector, and theme UI | PR 3 | `npx playwright test` | Playwright `/b/[slug]` smoke | Remove UI/layout/island/style files |
 
-## Phase 1: Cross-Repo Foundation (PR 1; migration owner)
+## Phase 1: Schema and Data Foundation (PR 1)
 
-- [ ] 1.1 **Cross-repo work unit:** create/apply the paired `phase9_public_barberia_discovery.sql` and rollback in the sibling repo (read-only here); verify unique `public_slug`, nullable `description`, `publicado`, narrow RPC ACLs, and zero `anon` table grants against `vcgyiyrboumimwgdsitf`. Do not create these files in this repo.
+- [ ] 1.1 Create the paired `supabase/migrations/phase9_public_barberia_discovery.sql` and `supabase/migrations/phase9_public_barberia_discovery_rollback.sql` IN THIS REPO. Apply the DDL to `vcgyiyrboumimwgdsitf` through the Supabase MCP — additive, against a zero-row database, explicitly approved by the user. Verify unique `public_slug`, nullable `description`, `publicado`, narrow RPC ACLs, and zero `anon` table grants.
 - [ ] 1.2 Operational/data step: publish one demo `Barberia`, one active `Barbero`, and its `Servicio` rows; verify context/catalog fixtures and record rollback deletion. Web implementation is blocked until 1.1 is applied.
 
 ## Phase 2: Scaffold and Read Infrastructure (PR 2; blocked by Phase 1)
@@ -43,5 +43,5 @@ Chain strategy: pending
 
 ## Key Learnings
 
-1. The migration is owned by the sibling repository and must precede web deployment.
+1. The migration lives in this repo under `supabase/migrations/`; the SDD edit authority for this change covers only the web repo, so a sibling-repo migration was not deliverable.
 2. The greenfield web has no test runner until the scaffold creates the Vitest and Playwright surface.
