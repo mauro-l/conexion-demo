@@ -1,0 +1,14 @@
+# openspec/config.yaml — SDD/openspec workspace config for 'conexion-demo'
+# This file defines workspace-level SDD metadata, including strict_tdd and project list.
+
+workspace:
+  name: conexion-demo
+  description: |-
+    Astro + React islands + TypeScript web. Supabase Edge Functions. Greenfield, no test infra yet.
+  strict_tdd: false
+  projects:
+    - name: conexion-demo
+      path: .
+      stack: "Astro, React (islands), TypeScript, Supabase Edge Functions, PostgreSQL/RLS"
+      has_tests: false
+      test_command: null

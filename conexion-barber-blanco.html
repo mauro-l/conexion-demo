@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Conexión Barber | Reservá tu turno</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,600;0,700;0,800;1,500;1,600&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1A1A1A;
+    --ink-soft:#57544C;
+    --paper:#FFFFFF;
+    --card:#FAF8F4;
+    --line:#E7E3D8;
+    --brass:#9C8148;
+    --brass-dark:#6E5A30;
+    --muted:#8A8579;
+    --disabled:#DEDACE;
+    --error:#C1503C;
+    --success:#4F7A57;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  button, input{font-family:inherit;}
+  a{color:var(--brass-dark);}
+  .view{display:none;}
+  .view.active{display:block;}
+  main{padding:18px 18px 100px; max-width:480px; margin:0 auto;}
+  main.wide{max-width:640px;}
+
+  /* ---------- Topbars ---------- */
+  .topbar{
+    position:sticky; top:0; z-index:20;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 20px;
+    background:var(--paper);
+    border-bottom:1px solid var(--line);
+    max-width:640px; margin:0 auto;
+  }
+  .logo{font-family:'Playfair Display',serif; font-weight:700; font-size:19px;}
+  .logo span{color:var(--brass);}
+  .login-link{font-size:13px; font-weight:500; text-decoration:none; color:var(--ink-soft);}
+
+  .modal-topbar{
+    position:sticky; top:0; z-index:20;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 16px;
+    background:var(--paper);
+    border-bottom:1px solid var(--line);
+    max-width:640px; margin:0 auto;
+  }
+  .icon-btn{
+    width:36px; height:36px;
+    display:flex; align-items:center; justify-content:center;
+    background:none; border:none; border-radius:50%; color:var(--ink); cursor:pointer;
+  }
+  .icon-btn:hover{background:var(--card);}
+  .topbar-crumb{font-size:12.5px; font-weight:600; color:var(--muted);}
+
+  /* ---------- Home / hero ---------- */
+  .cover-photo{width:100%; aspect-ratio:4/3; overflow:hidden; background:var(--line);}
+  .cover-photo img{width:100%; height:100%; object-fit:cover; display:block;}
+  .hero{padding:20px 20px 8px; max-width:640px; margin:0 auto;}
+  .hero-head{display:flex; align-items:flex-start; gap:14px; margin-bottom:14px;}
+  .brand-mark{
+    flex-shrink:0; width:56px; height:56px; border-radius:50%;
+    background:var(--ink); display:flex; align-items:center; justify-content:center;
+    border:1px solid var(--line); margin-top:-38px; box-shadow:0 2px 6px rgba(21,23,26,0.18);
+  }
+  .eyebrow{font-size:12px; font-weight:600; letter-spacing:0.14em; text-transform:uppercase; color:var(--brass-dark); margin:0 0 8px;}
+  .hero h1{font-family:'Playfair Display',serif; font-weight:800; font-size:clamp(32px,8vw,46px); margin:0 0 10px; line-height:1.05;}
+  .hero p.tagline{margin:0 0 16px; font-size:14.5px; color:var(--muted); max-width:46ch; line-height:1.5;}
+  .rating-row{display:flex; align-items:center; gap:8px; font-size:13.5px; font-weight:600; margin-bottom:18px;}
+  .rating-row .stars{color:var(--brass); letter-spacing:1px;}
+  .rating-row .count{color:var(--muted); font-weight:500;}
+  .info-list{display:flex; flex-direction:column; gap:10px; background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px;}
+  .info-row{display:flex; align-items:flex-start; gap:10px; font-size:13.5px; color:var(--ink-soft);}
+  .info-row svg{flex-shrink:0; margin-top:1px;}
+  .info-row a{color:var(--brass-dark); font-weight:600; text-decoration:none;}
+
+  .services{padding:8px 20px 40px; max-width:640px; margin:0 auto;}
+  .services h2{font-family:'Playfair Display',serif; font-weight:600; font-size:23px; margin:28px 0 14px;}
+  .ticket-list{display:flex; flex-direction:column; gap:16px;}
+
+  .ticket{position:relative; background:var(--card); border:1px solid var(--line); border-radius:var(--radius); box-shadow:0 1px 2px rgba(21,23,26,0.04);}
+  .ticket-main{display:flex; align-items:center; justify-content:space-between; gap:10px; padding:16px 18px 12px;}
+  .ticket-name{font-family:'Playfair Display',serif; font-size:18px; font-weight:600; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .ticket-detail-toggle{flex-shrink:0; background:none; border:none; font-size:12.5px; font-weight:600; color:var(--brass-dark); display:flex; align-items:center; gap:4px; cursor:pointer; padding:4px 0;}
+  .ticket-detail-toggle svg{transition:transform .18s ease;}
+  .ticket-detail-toggle[aria-expanded="true"] svg{transform:rotate(180deg);}
+  .ticket-detail{padding:0 18px 14px; font-size:13px; line-height:1.5; color:var(--muted);}
+  .ticket-detail[hidden]{display:none;}
+  .ticket-perf{position:relative; height:1px; margin:0 14px; border-top:1.5px dashed var(--line);}
+  .ticket-perf::before, .ticket-perf::after{content:""; position:absolute; top:50%; transform:translateY(-50%); width:18px; height:18px; background:var(--paper); border-radius:50%; border:1px solid var(--line);}
+  .ticket-perf::before{left:-23px;}
+  .ticket-perf::after{right:-23px;}
+  .ticket-footer{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 18px 16px;}
+  .ticket-meta{font-family:'IBM Plex Mono',monospace; font-size:13px; font-weight:500; color:var(--ink-soft);}
+  .ticket-meta .price{font-weight:600; color:var(--ink);}
+  .ticket-meta .dot{color:var(--line); margin:0 6px;}
+  .ticket-cta{flex-shrink:0; background:var(--ink); color:#fff; border:none; border-radius:10px; padding:10px 18px; font-size:13.5px; font-weight:600; cursor:pointer;}
+  .ticket-cta:hover{background:var(--brass-dark);}
+  .ticket-cta:active{transform:scale(0.97);}
+
+  /* ---------- Datetime view ---------- */
+  h1.title{font-family:'Playfair Display',serif; font-weight:700; font-size:26px; margin:2px 0 6px;}
+  p.subtitle{font-size:13.5px; color:var(--muted); margin:0 0 18px; line-height:1.5;}
+  p.subtitle strong{color:var(--ink);}
+
+  .service-chip{display:flex; align-items:center; justify-content:space-between; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 14px; margin-bottom:18px; font-size:13px;}
+  .service-chip .name{font-weight:600;}
+  .service-chip .meta{font-family:'IBM Plex Mono',monospace; color:var(--muted); font-size:12px;}
+
+  .prof-row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:22px;}
+  .prof-select{display:flex; align-items:center; gap:8px; background:var(--card); border:1px solid var(--line); border-radius:999px; padding:6px 14px 6px 6px; font-size:13.5px; font-weight:600; cursor:pointer;}
+  .prof-avatar{width:26px; height:26px; border-radius:50%; background:var(--ink); color:#fff; display:flex; align-items:center; justify-content:center; font-size:11px;}
+  .cal-jump-btn{width:38px; height:38px; border-radius:50%; border:1px solid var(--line); background:var(--card); display:flex; align-items:center; justify-content:center; cursor:pointer; flex-shrink:0;}
+
+  h2.section-label{font-family:'Inter',sans-serif; font-weight:600; font-size:12.5px; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; margin:0 0 10px;}
+
+  .date-scroller{display:flex; gap:8px; overflow-x:auto; scroll-snap-type:x proximity; padding-bottom:6px; margin-bottom:26px; -ms-overflow-style:none; scrollbar-width:none;}
+  .date-scroller::-webkit-scrollbar{display:none;}
+  .date-card{scroll-snap-align:start; flex-shrink:0; width:58px; padding:10px 0; display:flex; flex-direction:column; align-items:center; gap:2px; border:1px solid var(--line); border-radius:12px; background:var(--card); cursor:pointer;}
+  .date-card .dow{font-size:11px; text-transform:capitalize; color:var(--muted); font-weight:500;}
+  .date-card .dnum{font-family:'IBM Plex Mono',monospace; font-size:18px; font-weight:600;}
+  .date-card .mon{font-size:10.5px; text-transform:capitalize; color:var(--muted);}
+  .date-card.selected{background:var(--ink); border-color:var(--ink);}
+  .date-card.selected .dow, .date-card.selected .mon{color:#D9D4C6;}
+  .date-card.selected .dnum{color:#fff;}
+  .date-card.disabled{opacity:0.4; pointer-events:none;}
+
+  .time-group{margin-bottom:20px;}
+  .time-group .group-label{font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em; margin:0 0 8px;}
+  .time-slot{display:block; width:100%; text-align:left; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; margin-bottom:8px; font-family:'IBM Plex Mono',monospace; font-size:14.5px; font-weight:600; color:var(--ink); cursor:pointer;}
+  .time-slot:hover{border-color:var(--brass);}
+  .time-slot.selected{background:var(--ink); border-color:var(--ink); color:#fff;}
+  .waitlist{font-size:13px; color:var(--muted); margin:22px 0 4px;}
+
+  /* ---------- Contact view ---------- */
+  .recap{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:14px 16px; margin-bottom:22px;}
+  .recap-row{display:flex; align-items:flex-start; gap:10px; padding:8px 0; font-size:13.5px;}
+  .recap-row + .recap-row{border-top:1px solid var(--line);}
+  .recap-row svg{flex-shrink:0; margin-top:2px; color:var(--brass-dark);}
+  .recap-row .label{display:block; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.03em; margin-bottom:1px;}
+  .recap-row .value{font-weight:600;}
+  .recap-row .price{margin-left:auto; font-family:'IBM Plex Mono',monospace; font-weight:600;}
+
+  .field{margin-bottom:16px;}
+  .field-row{display:flex; gap:12px;}
+  .field-row .field{flex:1;}
+  label{display:block; font-size:12.5px; font-weight:600; margin-bottom:6px;}
+  label .req{color:var(--brass-dark);}
+  input[type="text"], input[type="email"], input[type="tel"]{width:100%; padding:13px 14px; border:1px solid var(--line); border-radius:10px; background:var(--card); font-size:15px; color:var(--ink); outline:none;}
+  input:focus{border-color:var(--ink);}
+  .phone-field{display:flex; gap:8px;}
+  .phone-prefix{flex-shrink:0; width:64px; display:flex; align-items:center; justify-content:center; border:1px solid var(--line); border-radius:10px; background:var(--card); font-size:14.5px; font-weight:600; color:var(--muted);}
+  .hint{font-size:11.5px; color:var(--muted); margin-top:6px; line-height:1.4;}
+  .verify-note{display:flex; gap:10px; background:#F1ECDF; border:1px solid var(--line); border-radius:12px; padding:12px 14px; font-size:12.5px; color:var(--ink-soft); line-height:1.5; margin:6px 0 8px;}
+  .verify-note svg{flex-shrink:0; margin-top:1px; color:var(--brass-dark);}
+  .legal{font-size:11px; color:var(--muted); margin-top:18px; line-height:1.5;}
+
+  .otp-row{display:flex; gap:9px; justify-content:space-between; margin:22px 0 8px;}
+  .otp-box{width:15%; aspect-ratio:1/1.05; text-align:center; font-family:'IBM Plex Mono',monospace; font-size:22px; font-weight:600; border:1px solid var(--line); border-radius:10px; background:var(--card); outline:none;}
+  .otp-box:focus{border-color:var(--ink);}
+  .otp-box.filled{border-color:var(--brass);}
+  .resend-row{font-size:13px; color:var(--muted); margin:14px 0 4px;}
+  .resend-row button{background:none; border:none; color:var(--brass-dark); font-weight:600; font-size:13px; cursor:pointer; padding:0;}
+  .resend-row button:disabled{color:var(--disabled); cursor:default;}
+  .otp-error{font-size:12.5px; color:var(--error); margin-top:6px; display:none;}
+
+  /* ---------- Sticky bar ---------- */
+  .sticky-bar{position:fixed; left:0; right:0; bottom:0; background:var(--paper); border-top:1px solid var(--line); padding:12px 18px calc(12px + env(safe-area-inset-bottom)); display:flex; align-items:center; gap:12px; z-index:30; max-width:640px; margin:0 auto;}
+  .sticky-summary{font-size:12.5px; line-height:1.35; color:var(--muted); flex:1;}
+  .sticky-summary strong{display:block; color:var(--ink); font-size:13.5px;}
+  .btn-secondary{flex:0 0 auto; background:none; border:1px solid var(--line); color:var(--ink); border-radius:10px; padding:13px 18px; font-size:14px; font-weight:600; cursor:pointer;}
+  .btn-primary{flex:1; background:var(--ink); color:#fff; border:none; border-radius:10px; padding:13px 18px; font-size:14px; font-weight:600; cursor:pointer;}
+  .btn-primary:disabled{background:var(--disabled); cursor:not-allowed;}
+  .btn-primary:not(:disabled):active{transform:scale(0.98);}
+
+  /* ---------- Confirm view ---------- */
+  .confirm-wrap{max-width:480px; margin:40px auto 0; padding:0 20px 60px; text-align:center;}
+  .check-circle{width:64px; height:64px; border-radius:50%; border:2px solid var(--ink); display:flex; align-items:center; justify-content:center; margin:0 auto 20px; color:var(--ink);}
+  .confirm-title{font-family:'Playfair Display',serif; font-weight:600; font-style:italic; font-size:24px; margin:0 0 24px; line-height:1.35;}
+  .confirm-card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:6px 16px; margin-bottom:22px; text-align:left;}
+  .confirm-note{font-size:13px; color:var(--muted); margin-bottom:26px;}
+  .confirm-note strong{color:var(--ink);}
+  .btn-outline-wide{background:var(--ink); color:#fff; border:none; border-radius:10px; padding:13px 26px; font-size:14px; font-weight:600; cursor:pointer;}
+
+  @media (min-width:680px){
+    .ticket-list{display:grid; grid-template-columns:1fr 1fr; gap:16px;}
+    .cover-photo{max-width:640px; margin:16px auto 0; border-radius:var(--radius); aspect-ratio:16/7;}
+  }
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important;} }
+</style>
+</head>
+<body>
+
+<!-- ================= HOME ================= -->
+<section class="view active" id="view-home">
+  <header class="topbar">
+    <div class="logo">CONEXIÓN <span>BARBER</span></div>
+    <a class="login-link" href="#">Iniciar sesión</a>
+  </header>
+
+  <div class="cover-photo">
+    <img src="https://picsum.photos/seed/conexionbarber/900/675" alt="Corte de pelo en Conexión Barber">
+  </div>
+
+  <div class="hero">
+    <div class="hero-head">
+      <div class="brand-mark"><span style="color:#fff;font-family:'Playfair Display',serif;font-weight:700;font-size:20px;">CB</span></div>
+    </div>
+    <p class="eyebrow">Barbería</p>
+    <h1>Conexión Barber</h1>
+    <p class="tagline">Cortes con criterio, asesoría en visagismo y un buen café mientras esperás. Reservá tu turno en menos de un minuto.</p>
+    <div class="rating-row"><span class="stars">★★★★★</span><span>5.0</span><span class="count">· 37 reseñas</span></div>
+    <div class="info-list">
+      <div class="info-row"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><span>Av. Gral. Mosconi 3429, C1419, CABA</span></div>
+      <div class="info-row"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg><span>Hoy 10:00–20:00</span></div>
+      <div class="info-row"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.5 3.5a10 10 0 0 0-16.9 9.8L2 21l7.9-1.5A10 10 0 1 0 20.5 3.5z"/></svg><a href="#">Contactanos por WhatsApp</a></div>
+    </div>
+  </div>
+
+  <div class="services">
+    <h2>Servicios</h2>
+    <div class="ticket-list" id="ticket-list"></div>
+  </div>
+</section>
+
+<!-- ================= FECHA Y HORA ================= -->
+<section class="view" id="view-datetime">
+  <header class="modal-topbar">
+    <button class="icon-btn" id="dt-back" aria-label="Volver"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+    <span class="topbar-crumb">Conexión Barber</span>
+    <button class="icon-btn" id="dt-close" aria-label="Cerrar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+  </header>
+  <main>
+    <h1 class="title">Seleccioná fecha y hora</h1>
+    <div class="service-chip"><span class="name" id="dt-service-name"></span><span class="meta" id="dt-service-meta"></span></div>
+    <div class="prof-row">
+      <button class="prof-select">
+        <span class="prof-avatar"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="4"/></svg></span>
+        <span>Cualquier profesional</span>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg>
+      </button>
+      <button class="cal-jump-btn" aria-label="Ir a una fecha específica"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg></button>
+    </div>
+    <h2 class="section-label">Elegí una fecha</h2>
+    <div class="date-scroller" id="date-scroller"></div>
+    <h2 class="section-label">Elegí un horario</h2>
+    <div id="time-groups"></div>
+    <p class="waitlist">¿Ninguna hora te viene bien? <a href="#">Unite a la lista de espera</a></p>
+  </main>
+</section>
+
+<!-- ================= CONTACTO ================= -->
+<section class="view" id="view-contact">
+  <header class="modal-topbar">
+    <button class="icon-btn" id="ct-back" aria-label="Volver"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg></button>
+    <span class="topbar-crumb">Conexión Barber</span>
+    <button class="icon-btn" id="ct-close" aria-label="Cerrar"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6L6 18M6 6l12 12"/></svg></button>
+  </header>
+  <main>
+    <section id="screen-form">
+      <h1 class="title">Tus datos</h1>
+      <p class="subtitle">Te vamos a enviar un código a tu email para confirmar la reserva.</p>
+      <div class="recap" id="ct-recap"></div>
+      <form id="contact-form">
+        <div class="field-row">
+          <div class="field"><label for="fname">Nombre <span class="req">*</span></label><input type="text" id="fname" required></div>
+          <div class="field"><label for="lname">Apellido <span class="req">*</span></label><input type="text" id="lname" required></div>
+        </div>
+        <div class="field"><label for="email">Email <span class="req">*</span></label><input type="email" id="email" placeholder="juan@mail.com" required></div>
+        <div class="field">
+          <label for="phone">Teléfono <span class="req">*</span></label>
+          <div class="phone-field"><span class="phone-prefix">🇦🇷 +54</span><input type="tel" id="phone" placeholder="1123456789" required></div>
+          <p class="hint">Ingresá tu número con código de área, sin el 0 y sin el 15. Ej: 1123456789</p>
+        </div>
+        <div class="verify-note"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 8l9 6 9-6M4 5h16a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"/></svg><span>Te vamos a mandar un código de 6 dígitos a este email para confirmar que la reserva es tuya. No hace falta crear ninguna cuenta.</span></div>
+        <p class="legal">Este sitio está protegido por reCAPTCHA. Al continuar aceptás recibir el email de confirmación de tu turno.</p>
+      </form>
+    </section>
+
+    <section id="screen-code" style="display:none;">
+      <h1 class="title">Confirmá tu email</h1>
+      <p class="subtitle">Ingresá el código de 6 dígitos que enviamos a <strong id="email-echo">tu@mail.com</strong></p>
+      <div class="otp-row" id="otp-row">
+        <input class="otp-box" type="text" inputmode="numeric" maxlength="1" data-i="0">
+        <input class="otp-box" type="text" inputmode="numeric" maxlength="1" data-i="1">
+        <input class="otp-box" type="text" inputmode="numeric" maxlength="1" data-i="2">
+        <input class="otp-box" type="text" inputmode="numeric" maxlength="1" data-i="3">
+        <input class="otp-box" type="text" inputmode="numeric" maxlength="1" data-i="4">
+        <input class="otp-box" type="text" inputmode="numeric" maxlength="1" data-i="5">
+      </div>
+      <p class="otp-error" id="otp-error">Ese código no es correcto. Probá de nuevo.</p>
+      <p class="resend-row">¿No te llegó nada? <button type="button" id="resend-btn" disabled>Reenviar código (<span id="countdown">30</span>s)</button></p>
+    </section>
+  </main>
+</section>
+
+<!-- ================= CONFIRMACIÓN ================= -->
+<section class="view" id="view-confirm">
+  <header class="topbar">
+    <div class="logo">CONEXIÓN <span>BARBER</span></div>
+    <a class="login-link" href="#">Iniciar sesión</a>
+  </header>
+  <div class="confirm-wrap">
+    <div class="check-circle"><svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M20 6L9 17l-5-5"/></svg></div>
+    <h1 class="confirm-title" id="confirm-title">¡Gracias por agendar en Conexión Barber!</h1>
+    <div class="confirm-card">
+      <div class="recap-row"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M4 8v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V8"/></svg><div><span class="label">Servicio</span><span class="value" id="cf-service"></span></div></div>
+      <div class="recap-row"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><div><span class="label">Fecha y hora</span><span class="value" id="cf-datetime"></span></div></div>
+      <div class="recap-row"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg><div><span class="label">Ubicación</span><span class="value">Av. Gral. Mosconi 3429, CABA</span></div></div>
+      <div class="recap-row"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg><div><span class="label">Precio</span><span class="value" id="cf-price"></span></div></div>
+    </div>
+    <p class="confirm-note">Enviamos la confirmación de tu reserva a <strong id="cf-email"></strong></p>
+    <button class="btn-outline-wide" id="confirm-again-btn">Agendar otra cita</button>
+  </div>
+</section>
+
+<!-- ================= STICKY BAR (compartida) ================= -->
+<div class="sticky-bar" id="sticky-bar" style="display:none;">
+  <button class="btn-secondary" id="prev-btn" style="display:none;">Anterior</button>
+  <div class="sticky-summary" id="sticky-summary"></div>
+  <button class="btn-primary" id="primary-btn" disabled></button>
+</div>
+
+<script>
+  // ============ Estado global del flujo ============
+  const state = { service:null, date:null, time:null, professional:'Cualquier profesional', contact:{} };
+
+  const services = [
+    { name:"Corte de pelo", duration:"40 min", price:"$23.000", detail:"Incluye asesoría en visagismo, corte de cabello, gaseosa de cortesía y lavado post corte." },
+    { name:"Corte y barba + toalla caliente", duration:"1 h", price:"$32.000", detail:"Incluye asesoría en visagismo, corte de cabello, arreglo de barba a máquina, afeitado con toalla caliente y fría, gaseosa y lavado de cabello." },
+    { name:"Corte y arreglo de barba", duration:"50 min", price:"$28.000", detail:"Incluye asesoría en visagismo, corte de cabello y arreglo de barba con máquina y afeitado." },
+    { name:"Barba + toalla caliente", duration:"30 min", price:"$21.000", detail:"Incluye asesoría en visagismo y afeitado con toallas caliente y fría, más gaseosa de cortesía." }
+  ];
+
+  const chevron = `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M6 9l6 6 6-6"/></svg>`;
+
+  function renderServices(){
+    const list = document.getElementById('ticket-list');
+    list.innerHTML = '';
+    services.forEach((s, i) => {
+      const id = 'detail-' + i;
+      const ticket = document.createElement('article');
+      ticket.className = 'ticket';
+      ticket.innerHTML = `
+        <div class="ticket-main">
+          <h3 class="ticket-name">${s.name}</h3>
+          <button class="ticket-detail-toggle" aria-expanded="false" aria-controls="${id}">Qué incluye ${chevron}</button>
+        </div>
+        <div class="ticket-detail" id="${id}" hidden><p>${s.detail}</p></div>
+        <div class="ticket-perf"></div>
+        <div class="ticket-footer">
+          <span class="ticket-meta">${s.duration}<span class="dot">·</span><span class="price">${s.price}</span></span>
+          <button class="ticket-cta" type="button" data-i="${i}">Reservar</button>
+        </div>`;
+      list.appendChild(ticket);
+    });
+  }
+  document.getElementById('ticket-list').addEventListener('click', (e) => {
+    const toggle = e.target.closest('.ticket-detail-toggle');
+    if (toggle){
+      const expanded = toggle.getAttribute('aria-expanded') === 'true';
+      toggle.setAttribute('aria-expanded', String(!expanded));
+      document.getElementById(toggle.getAttribute('aria-controls')).hidden = expanded;
+      return;
+    }
+    const cta = e.target.closest('.ticket-cta');
+    if (cta){
+      state.service = services[+cta.dataset.i];
+      goToDatetime();
+    }
+  });
+
+  // ============ Navegación entre vistas ============
+  function showView(id){
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    window.scrollTo(0,0);
+  }
+
+  const stickyBar = document.getElementById('sticky-bar');
+  const prevBtn = document.getElementById('prev-btn');
+  const primaryBtn = document.getElementById('primary-btn');
+  const stickySummary = document.getElementById('sticky-summary');
+
+  // ---------- Fecha y hora ----------
+  const scroller = document.getElementById('date-scroller');
+  const timeGroupsEl = document.getElementById('time-groups');
+  const TIMES = ["11:00","11:40","12:00","12:40","13:20","14:00","16:40","18:00","19:10","19:30"];
+  const dowFmt = new Intl.DateTimeFormat('es-AR', { weekday:'short' });
+  const monFmt = new Intl.DateTimeFormat('es-AR', { month:'short' });
+
+  function goToDatetime(){
+    document.getElementById('dt-service-name').textContent = state.service.name;
+    document.getElementById('dt-service-meta').textContent = `${state.service.duration} · ${state.service.price}`;
+    state.date = null; state.time = null;
+    renderDates();
+    renderTimes();
+    stickyBar.style.display = 'flex';
+    prevBtn.style.display = 'none';
+    primaryBtn.textContent = 'Siguiente';
+    primaryBtn.onclick = () => { if(state.date && state.time) goToContact(); };
+    updateDatetimeSticky();
+    showView('view-datetime');
+  }
+
+  function renderDates(){
+    scroller.innerHTML = '';
+    const today = new Date();
+    for (let i = 0; i < 14; i++){
+      const d = new Date(today); d.setDate(today.getDate() + i);
+      const closed = d.getDay() === 0;
+      const card = document.createElement('button');
+      card.className = 'date-card' + (closed ? ' disabled' : '');
+      card.innerHTML = `<span class="dow">${dowFmt.format(d)}</span><span class="dnum">${d.getDate()}</span><span class="mon">${monFmt.format(d)}</span>`;
+      if (!closed){
+        card.addEventListener('click', () => {
+          [...scroller.children].forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+          state.date = d; state.time = null;
+          renderTimes();
+          updateDatetimeSticky();
+        });
+        if (i === 0){ card.classList.add('selected'); state.date = d; }
+      }
+      scroller.appendChild(card);
+    }
+  }
+  function bucket(h){ return h < 12 ? 'Mañana' : h < 18 ? 'Tarde' : 'Noche'; }
+  function renderTimes(){
+    timeGroupsEl.innerHTML = '';
+    const groups = { 'Mañana':[], 'Tarde':[], 'Noche':[] };
+    TIMES.forEach(t => groups[bucket(parseInt(t))].push(t));
+    Object.entries(groups).forEach(([label, slots]) => {
+      if (!slots.length) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'time-group';
+      wrap.innerHTML = `<p class="group-label">${label}</p>`;
+      slots.forEach(t => {
+        const btn = document.createElement('button');
+        btn.className = 'time-slot';
+        btn.textContent = t;
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.time-slot').forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+          state.time = t;
+          updateDatetimeSticky();
+        });
+        wrap.appendChild(btn);
+      });
+      timeGroupsEl.appendChild(wrap);
+    });
+  }
+  function updateDatetimeSticky(){
+    if (state.date && state.time){
+      const dateLabel = state.date.toLocaleDateString('es-AR', { weekday:'long', day:'numeric', month:'long' });
+      stickySummary.innerHTML = `<strong>${dateLabel}</strong>${state.time} hs`;
+      primaryBtn.disabled = false;
+    } else {
+      stickySummary.textContent = 'Elegí fecha y hora para continuar';
+      primaryBtn.disabled = true;
+    }
+  }
+  document.getElementById('dt-back').addEventListener('click', () => { stickyBar.style.display='none'; showView('view-home'); });
+  document.getElementById('dt-close').addEventListener('click', () => { stickyBar.style.display='none'; showView('view-home'); });
+
+  // ---------- Contacto ----------
+  const formScreen = document.getElementById('screen-form');
+  const codeScreen = document.getElementById('screen-code');
+  const fname = document.getElementById('fname'), lname = document.getElementById('lname');
+  const email = document.getElementById('email'), phone = document.getElementById('phone');
+  let ctStep = 'form';
+
+  function goToContact(){
+    document.getElementById('ct-recap').innerHTML = `
+      <div class="recap-row"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M4 8v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V8"/></svg><div><span class="label">Servicio</span><span class="value">${state.service.name}</span></div><span class="price">${state.service.price}</span></div>
+      <div class="recap-row"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg><div><span class="label">Fecha y hora</span><span class="value">${state.date.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'})} · ${state.time}</span></div></div>
+      <div class="recap-row"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="4"/></svg><div><span class="label">Profesional</span><span class="value">${state.professional}</span></div></div>`;
+    ctStep = 'form';
+    formScreen.style.display = 'block';
+    codeScreen.style.display = 'none';
+    prevBtn.style.display = 'none';
+    primaryBtn.textContent = 'Enviar código';
+    validateForm();
+    primaryBtn.onclick = () => { if (ctStep === 'form') goToCodeStep(); else confirmCode(); };
+    showView('view-contact');
+  }
+  function validateForm(){
+    const ok = fname.value.trim() && lname.value.trim() && /^\S+@\S+\.\S+$/.test(email.value.trim()) && phone.value.trim().length >= 8;
+    if (ctStep === 'form') primaryBtn.disabled = !ok;
+  }
+  [fname,lname,email,phone].forEach(el => el.addEventListener('input', validateForm));
+
+  const otpBoxes = [...document.querySelectorAll('.otp-box')];
+  const otpError = document.getElementById('otp-error');
+  const CORRECT_CODE = '123456';
+  otpBoxes.forEach((box,i) => {
+    box.addEventListener('input', () => {
+      box.value = box.value.replace(/[^0-9]/g,'').slice(0,1);
+      box.classList.toggle('filled', !!box.value);
+      if (box.value && otpBoxes[i+1]) otpBoxes[i+1].focus();
+      const code = otpBoxes.map(b=>b.value).join('');
+      otpError.style.display = 'none';
+      otpBoxes.forEach(b => b.style.borderColor = '');
+      primaryBtn.disabled = code.length !== 6;
+    });
+    box.addEventListener('keydown', (e) => { if (e.key === 'Backspace' && !box.value && otpBoxes[i-1]) otpBoxes[i-1].focus(); });
+  });
+
+  const resendBtn = document.getElementById('resend-btn');
+  const countdownEl = document.getElementById('countdown');
+  let seconds = 30, timer = null;
+  function startCountdown(){
+    seconds = 30; resendBtn.disabled = true; countdownEl.textContent = seconds;
+    clearInterval(timer);
+    timer = setInterval(() => {
+      seconds--; countdownEl.textContent = seconds;
+      if (seconds <= 0){ clearInterval(timer); resendBtn.disabled = false; resendBtn.innerHTML = 'Reenviar código'; }
+    }, 1000);
+  }
+  resendBtn.addEventListener('click', () => { resendBtn.innerHTML = 'Reenviar código (<span id="countdown">30</span>s)'; startCountdown(); });
+
+  function goToCodeStep(){
+    ctStep = 'code';
+    formScreen.style.display = 'none';
+    codeScreen.style.display = 'block';
+    document.getElementById('email-echo').textContent = email.value.trim();
+    prevBtn.style.display = 'inline-block';
+    primaryBtn.textContent = 'Confirmar reserva';
+    primaryBtn.disabled = true;
+    otpBoxes.forEach(b => { b.value=''; b.classList.remove('filled'); });
+    otpBoxes[0].focus();
+    startCountdown();
+  }
+  function goBackToForm(){
+    ctStep = 'form';
+    codeScreen.style.display = 'none';
+    formScreen.style.display = 'block';
+    prevBtn.style.display = 'none';
+    primaryBtn.textContent = 'Enviar código';
+    clearInterval(timer);
+    validateForm();
+  }
+  function confirmCode(){
+    const code = otpBoxes.map(b=>b.value).join('');
+    if (code === CORRECT_CODE){
+      state.contact = { fname:fname.value.trim(), lname:lname.value.trim(), email:email.value.trim(), phone:phone.value.trim() };
+      goToConfirm();
+    } else {
+      otpError.style.display = 'block';
+      otpBoxes.forEach(b => b.style.borderColor = 'var(--error)');
+    }
+  }
+  prevBtn.addEventListener('click', () => { if (ctStep === 'code') goBackToForm(); });
+  document.getElementById('ct-back').addEventListener('click', () => {
+    if (ctStep === 'code') { goBackToForm(); return; }
+    stickyBar.style.display = 'none';
+    goToDatetime();
+  });
+  document.getElementById('ct-close').addEventListener('click', () => { stickyBar.style.display='none'; showView('view-home'); });
+
+  // ---------- Confirmación ----------
+  function goToConfirm(){
+    stickyBar.style.display = 'none';
+    document.getElementById('confirm-title').textContent = `¡Gracias ${state.contact.fname} por agendar en Conexión Barber!`;
+    document.getElementById('cf-service').textContent = state.service.name;
+    document.getElementById('cf-datetime').textContent = `${state.date.toLocaleDateString('es-AR',{weekday:'long',day:'numeric',month:'long'})} · ${state.time}`;
+    document.getElementById('cf-price').textContent = state.service.price;
+    document.getElementById('cf-email').textContent = state.contact.email;
+    showView('view-confirm');
+  }
+  document.getElementById('confirm-again-btn').addEventListener('click', () => {
+    state.service = null; state.date = null; state.time = null; state.contact = {};
+    document.getElementById('contact-form').reset();
+    showView('view-home');
+  });
+
+  renderServices();
+</script>
+</body>
+</html>
