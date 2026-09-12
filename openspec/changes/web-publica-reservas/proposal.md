@@ -21,6 +21,7 @@ Build a read-only public discovery MVP for one barbershop with one currently pub
 ## Capabilities
 
 ### New Capabilities
+- `web-app-scaffold`: bootstrapped Astro + React islands + TypeScript app serving `/b/[slug]`, with passing build and typecheck verification.
 - `public-context-read`: public barbershop context resolved by a `Barberia` identifier and returned with `barbers: [{ name, alias, description, photoUrl }]`. A per-barber public token is deferred until a second barber exists (see Approach).
 - `public-service-catalog-read`: catalog returned as `{ name, durationMinutes, price }`, without internal IDs or storage shape.
 - `public-barber-selector`: prototype-matching selector backed by the context `barbers` list; one barber is displayed now and additional barbers can be added through data.
