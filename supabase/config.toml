@@ -1,0 +1,7 @@
+project_id = "vcgyiyrboumimwgdsitf"
+
+[functions.public-context]
+verify_jwt = false
+
+[functions.public-catalog]
+verify_jwt = false

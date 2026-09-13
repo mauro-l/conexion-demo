@@ -31,9 +31,9 @@ Chain strategy: stacked-to-main
 
 ## Phase 2: Scaffold and Read Infrastructure (PR 2; blocked by Phase 1)
 
-- [ ] 2.1 Create `package.json`, `astro.config.mjs`, `tsconfig.json`, `src/env.d.ts`, `supabase/config.toml`; configure Astro SSR Node, React islands, `check`/`build`/`test`, Vitest, and Playwright.
-- [ ] 2.2 Create `src/types/public.ts` and `src/lib/public-api.server.ts`; enforce exact context/catalog DTOs, server-only function calls, no IDs/secrets, and consistent 404 behavior. RED tests precede implementation: unknown/unpublished parity, exact keys, numeric duration, and direct anonymous REST denial.
-- [ ] 2.3 Create `supabase/functions/_shared/http.ts`, `_shared/supabase.ts`, `public-context/index.ts`, and `public-catalog/index.ts`; implement GET/OPTIONS allow-list CORS, security headers, validation, narrow RPC calls, and redacted errors. Verify `astro check`, `astro build`, `npm test`.
+- [x] 2.1 Create `package.json`, `astro.config.mjs`, `tsconfig.json`, `src/env.d.ts`, `supabase/config.toml`; configure Astro SSR Node, React islands, `check`/`build`/`test`, Vitest, and Playwright.
+- [x] 2.2 Create `src/types/public.ts` and `src/lib/public-api.server.ts`; enforce exact context/catalog DTOs, server-only function calls, no IDs/secrets, and consistent 404 behavior. RED tests precede implementation: unknown/unpublished parity, exact keys, numeric duration, and direct anonymous REST denial.
+- [x] 2.3 Create `supabase/functions/_shared/http.ts`, `_shared/supabase.ts`, `public-context/index.ts`, and `public-catalog/index.ts`; implement GET/OPTIONS allow-list CORS, security headers, validation, narrow RPC calls, and redacted errors. Verify `astro check`, `astro build`, `npm test`.
 
 ## Phase 3: Profile and Interaction UI (PR 3; depends on Phase 2)
 
