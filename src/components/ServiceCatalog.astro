@@ -1,0 +1,47 @@
+---
+import type { Catalog } from '../types/public';
+
+interface Props {
+  services: Catalog['services'];
+}
+
+const { services } = Astro.props;
+
+function formatDuration(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  const remainder = minutes % 60;
+  if (remainder === 0) return `${hours} h`;
+  return `${hours} h ${remainder} min`;
+}
+
+function formatPrice(price: number): string {
+  return `$${price.toLocaleString('es-AR')}`;
+}
+---
+
+<section class="services">
+  <h2 class="section-title">Servicios</h2>
+  <div class="ticket-list">
+    {
+      services.map((service) => (
+        <article class="ticket">
+          <div class="ticket-main">
+            <h3 class="ticket-name">{service.name}</h3>
+          </div>
+          <div class="ticket-perf" />
+          <div class="ticket-footer">
+            <span class="ticket-meta">
+              {formatDuration(service.durationMinutes)}
+              <span class="dot">·</span>
+              <span class="price">{formatPrice(service.price)}</span>
+            </span>
+            <button type="button" class="ticket-cta">
+              Reservar
+            </button>
+          </div>
+        </article>
+      ))
+    }
+  </div>
+</section>

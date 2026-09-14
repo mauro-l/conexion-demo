@@ -20,6 +20,9 @@ function validateSlug(slug: string): void {
 }
 
 function envVar(name: keyof ImportMetaEnv): string | undefined {
+  const fromProcess =
+    typeof process !== 'undefined' && process.env != null ? process.env[name as string] : undefined;
+  if (fromProcess !== undefined) return fromProcess;
   return (import.meta as { env?: ImportMetaEnv }).env?.[name];
 }
 

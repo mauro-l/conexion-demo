@@ -37,9 +37,9 @@ Chain strategy: stacked-to-main
 
 ## Phase 3: Profile and Interaction UI (PR 3; depends on Phase 2)
 
-- [ ] 3.1 Create `src/layouts/PublicLayout.astro`, `src/pages/b/[slug].astro`, and `src/components/ServiceCatalog.astro`; render SSR profile/catalog only from DTOs, with no booking or secret leakage. Verify `npx playwright test`.
-- [ ] 3.2 Create `src/components/ProfessionalSelector.tsx`; RED-test one barber selectable and two barber entries data-driven, then implement no-booking selection behavior.
-- [ ] 3.3 Create `src/components/ThemeSwitch.tsx` and `src/styles/tokens.css`; RED-test toggle/bootstrap, then implement identical light/dark tokens, Playfair/Oswald swap, and pre-paint stored/system theme. Verify `npx playwright test`.
+- [x] 3.1 Create `src/layouts/PublicLayout.astro`, `src/pages/b/[slug].astro`, and `src/components/ServiceCatalog.astro`; render SSR profile/catalog only from DTOs, with no booking or secret leakage. Verify `npx playwright test`.
+- [x] 3.2 Create `src/components/ProfessionalSelector.tsx`; RED-test one barber selectable and two barber entries data-driven, then implement no-booking selection behavior.
+- [x] 3.3 Create `src/components/ThemeSwitch.tsx` and `src/styles/tokens.css`; RED-test toggle/bootstrap, then implement identical light/dark tokens, Playfair/Oswald swap, and pre-paint stored/system theme. Verify `npx playwright test`.
 
 ## Key Learnings
 

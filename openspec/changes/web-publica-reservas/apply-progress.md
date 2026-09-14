@@ -209,3 +209,105 @@ Still open: `PUBLIC_SITE_ORIGIN` must be set for the deployed web origin. Contin
 
 - The bare `export default` entrypoint form silently hangs at runtime. See the deployment section above. Fixed with `Deno.serve` and re-verified.
 - A direct PostgreSQL check proved `anon` cannot read `public."Barberia"` (SQLSTATE `42501`, HTTP 401), confirming the read boundary is the only path.
+
+---
+
+## PR 3
+
+### Scope of this batch
+
+Deliver the profile page, layout, service catalog, professional selector, and light/dark theme UI for the public discovery web. Depends on PR 2's scaffold, DTOs, and deployed Edge Functions.
+
+### Files created / modified
+
+| File | Purpose |
+|---|---|
+| `src/styles/tokens.css` | Theme tokens and component styles copied from both HTML prototypes; `:root` light, `:root[data-theme="dark"]` dark, heading font swap. |
+| `src/lib/theme.ts` | Theme helpers: `getInitialTheme`, `applyTheme`, `toggleTheme`, plus storage key. Used by the inline head script and the island. |
+| `src/components/ThemeSwitch.tsx` | Hydrated icon button that toggles light/dark and persists the choice. |
+| `src/components/ProfessionalSelector.tsx` | Data-driven dropdown pill populated from the context DTO `barbers` list. |
+| `src/components/ServiceCatalog.astro` | SSR service ticket list rendered from the catalog DTO. |
+| `src/layouts/PublicLayout.astro` | Shell with topbar, Google Fonts, global tokens, pre-paint theme script, and theme switch island. |
+| `src/pages/b/[slug].astro` | SSR route (`prerender = false`) that fetches context/catalog and renders the profile; returns the custom 404 page for unknown/unpublished slugs. |
+| `src/pages/404.astro` | Custom not-found page reused by the dynamic route via `Astro.rewrite('/404')`. |
+| `src/components/ThemeSwitch.test.tsx` | RED tests for bootstrap and toggle. |
+| `src/components/ProfessionalSelector.test.tsx` | RED tests for one/two barber data-driven selection. |
+| `playwright.config.ts` | Chromium-only config with `webServer` running `npm run preview` against `/b/conexion-barberia`. |
+| `tests/e2e/profile.spec.ts` | Playwright smoke tests: DTO rendering, no internal IDs, selector, theme toggle, 404. |
+| `package.json` | Added `@testing-library/react`, `@testing-library/jest-dom`, `jsdom`. |
+| `vitest.config.ts` | Switched environment to `jsdom`, added `esbuild.jsx: 'automatic'`, alias `~`, and `setupFiles`. |
+| `vitest.setup.ts` | Jest-DOM matchers and `matchMedia` polyfill for component tests. |
+| `src/lib/public-api.server.ts` | Added `process.env` fallback so the Node SSR preview/runtime can read `PUBLIC_SUPABASE_URL` / `PUBLIC_SUPABASE_ANON_KEY` even when they are not baked into the Vite build. |
+
+### Decisions taken
+
+- CSS is included via `<style is:global>@import '../styles/tokens.css';</style>` in `PublicLayout.astro`; Astro builds it into a hashed `_astro/*.css` asset.
+- The pre-paint theme script is inlined in `<head>` so `data-theme` is set before the first paint, preventing FOUC.
+- The 404 response uses `Astro.rewrite('/404')` to render `src/pages/404.astro` with status 404. Returning a plain `Response` with status 404 was being replaced by Astro's default error page.
+- `public-api.server.ts` now reads `process.env` before `import.meta.env` so the same built artifact works with runtime env vars in the Node SSR preview/server.
+- The profile page renders only DTO fields (name, description, barbers, services). Address/hours/rating rows from the prototypes are not shown because they are not in the public context DTO and would require hardcoded fake data.
+- The "Reservar" CTA is rendered as a non-wired button to match the prototype ticket footer visually, with no booking behavior.
+
+### Work Unit Evidence
+
+| Evidence | Value |
+|---|---|
+| Focused test command and exact result | `npm test` → `Test Files 3 passed (3)`, `Tests 11 passed (11)` |
+| Runtime harness command/scenario and exact result | `npm run check` → `0 errors`, `0 warnings`, `0 hints`; `npm run build` → `Complete!`; `npx playwright test` → `4 passed` against built SSR preview hitting live Edge Functions |
+| Rollback boundary | Delete the files listed above under `src/`, `tests/`, `playwright.config.ts`, `vitest.setup.ts`, and revert `package.json`/`vitest.config.ts`. PR 1/2 database objects and Edge Functions remain untouched. |
+
+### Verification commands (real output)
+
+```text
+$ npm test
+RUN  v2.1.9 /home/mauro/conexion-demo
+✓ src/lib/public-api.server.test.ts (5 tests)
+✓ src/components/ThemeSwitch.test.tsx (3 tests)
+✓ src/components/ProfessionalSelector.test.tsx (3 tests)
+Test Files  3 passed (3)
+Tests  11 passed (11)
+
+$ npm run check
+Result (14 files):
+- 0 errors
+- 0 warnings
+- 0 hints
+
+$ npm run build
+... Complete!
+
+$ npx playwright test
+Running 4 tests using 4 workers
+✓ renders profile and catalog from DTOs with no internal IDs
+✓ professional selector is data-driven and selectable
+✓ theme switch toggles light and dark
+✓ returns 404 for unknown slugs
+4 passed
+```
+
+### Task state
+
+- [x] 3.1 Public layout, profile page, and service catalog created.
+- [x] 3.2 Professional selector created with RED unit tests.
+- [x] 3.3 Theme switch and tokens created with RED unit tests.
+
+### Workload / PR boundary
+
+- Mode: chained PR slice
+- Current work unit: PR 3 — profile, catalog, selector, and theme UI
+- Boundary: starts after PR 2 verified scaffold/read boundary; ends with the UI files, tests, and Playwright smoke passing. Does not include verification/archive or unrelated tasks.
+- Estimated review budget impact: the new UI/tests/config files exceed 400 lines when counted as a single diff; this batch is the final PR in the planned chain, so the overall change remains split as designed. This slice itself is an honest work unit and should be reviewed as PR 3.
+
+### Deviations from design.md
+
+- Added `src/pages/404.astro` and used `Astro.rewrite('/404')` to serve a custom 404 page; not in the original design but required because Astro's Node adapter replaces a plain 404 `Response` with its default error page.
+- Added `process.env` fallback in `public-api.server.ts` so runtime env vars work in the Node SSR server; the design assumed `import.meta.env` would be sufficient, but Vite bakes `import.meta.env` at build time.
+- Added `@testing-library/jest-dom` and `jsdom` plus `vitest.setup.ts` to enable React component RED tests; the design only mentioned Vitest/Playwright.
+- Did not reproduce the prototype's static address/hours/rating rows because those fields are not in the context DTO.
+
+### Issues found
+
+- Vite's SSR build inlines `import.meta.env` as a static object, so `PUBLIC_SUPABASE_URL`/`PUBLIC_SUPABASE_ANON_KEY` were not available at runtime unless baked in at build time. Fixed with a `process.env` fallback in the server-only API client.
+- Returning `new Response(notFoundHtml, { status: 404 })` from an Astro route produced Astro's default 404 page instead of the custom body. Fixed by adding `src/pages/404.astro` and using `Astro.rewrite('/404')`.
+- Playwright's Chromium binary needed system dependencies (`libnspr4`, etc.); installed with `npx playwright install-deps chromium`.
+- Playwright's `webServer` URL check needed to target a route that returns 200 (`/b/conexion-barberia`) because the app has no root page.

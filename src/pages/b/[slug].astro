@@ -1,0 +1,66 @@
+---
+import PublicLayout from '../../layouts/PublicLayout.astro';
+import ServiceCatalog from '../../components/ServiceCatalog.astro';
+import { ProfessionalSelector } from '../../components/ProfessionalSelector.tsx';
+import { createPublicApiClient, PublicApiError } from '../../lib/public-api.server';
+import type { Context, Catalog } from '../../types/public';
+
+export const prerender = false;
+
+const { slug } = Astro.params;
+const api = createPublicApiClient();
+
+let context: Context | null = null;
+let catalog: Catalog | null = null;
+
+if (typeof slug === 'string') {
+  try {
+    [context, catalog] = await Promise.all([api.context(slug), api.catalog(slug)]);
+  } catch (error) {
+    if (error instanceof PublicApiError && error.code === 'PUBLIC_RESOURCE_NOT_FOUND') {
+      return Astro.rewrite('/404');
+    }
+    return new Response('Internal server error', { status: 500 });
+  }
+} else {
+  return Astro.rewrite('/404');
+}
+
+function initials(name: string): string {
+  const parts = name.trim().split(/\s+/);
+  const first = parts[0]?.[0] ?? '';
+  const second = parts[1]?.[0] ?? '';
+  return (first + second).toUpperCase();
+}
+
+const title = context?.barberia.name
+  ? `${context.barberia.name} | Conexión Barber`
+  : 'Conexión Barber | Reservá tu turno';
+---
+
+<PublicLayout title={title}>
+  <>
+    <div class="cover-photo">
+      <img
+        src={`https://picsum.photos/seed/${slug}/900/675`}
+        alt={`Foto de portada de ${context.barberia.name}`}
+        loading="eager"
+      />
+    </div>
+
+    <section class="hero container">
+      <div class="hero-head">
+        <div class="brand-mark" aria-hidden="true">
+          <span class="brand-mark-initials">{initials(context.barberia.name)}</span>
+        </div>
+      </div>
+      <p class="eyebrow">Barbería</p>
+      <h1 class="hero-title">{context.barberia.name}</h1>
+      {context.barberia.description && <p class="tagline">{context.barberia.description}</p>}
+
+      <ProfessionalSelector barbers={context.barbers} client:load />
+    </section>
+
+    <ServiceCatalog services={catalog.services} />
+  </>
+</PublicLayout>
