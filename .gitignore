@@ -15,3 +15,6 @@ dist/
 
 # SDD tooling cache
 .atl/.skill-registry.cache.json
+
+# Playwright output
+test-results/
