@@ -7,7 +7,7 @@
 | Estimated changed lines | 700–950 authored lines across migration, greenfield scaffold, functions, tests, and UI |
 | 400-line budget risk | High |
 | Chained PRs recommended | Yes |
-| Suggested split | PR 1 migration/data → PR 2 scaffold/read boundary → PR 3 profile/selector/theme |
+| Suggested split | PR 1 migration/data → PR 2 scaffold/read boundary → PR 3A UI foundation/interactions → PR 3B profile/catalog |
 | Delivery strategy | ask-on-risk |
 | Chain strategy | stacked-to-main (confirmed by the user) |
 
@@ -40,6 +40,11 @@ Chain strategy: stacked-to-main
 - [x] 3.1 Create `src/layouts/PublicLayout.astro`, `src/pages/b/[slug].astro`, and `src/components/ServiceCatalog.astro`; render SSR profile/catalog only from DTOs, with no booking or secret leakage. Verify `npx playwright test`.
 - [x] 3.2 Create `src/components/ProfessionalSelector.tsx`; RED-test one barber selectable and two barber entries data-driven, then implement no-booking selection behavior.
 - [x] 3.3 Create `src/components/ThemeSwitch.tsx` and `src/styles/tokens.css`; RED-test toggle/bootstrap, then implement identical light/dark tokens, Playfair/Oswald swap, and pre-paint stored/system theme. Verify `npx playwright test`.
+
+### PR 3 split
+
+- PR 3A (`fb28273`): UI foundation, dependencies, selector, and theme interaction. This slice carries the explicitly accepted size exception because `package-lock.json` contributes 986 generated lines.
+- PR 3B (`fd832ca`): SSR public profile, service catalog, 404 route, runtime environment fallback, and Playwright profile smoke coverage.
 
 ## Key Learnings
 

@@ -212,11 +212,11 @@ Still open: `PUBLIC_SITE_ORIGIN` must be set for the deployed web origin. Contin
 
 ---
 
-## PR 3
+## PR 3A and PR 3B
 
 ### Scope of this batch
 
-Deliver the profile page, layout, service catalog, professional selector, and light/dark theme UI for the public discovery web. Depends on PR 2's scaffold, DTOs, and deployed Edge Functions.
+Deliver the profile page, layout, service catalog, professional selector, and light/dark theme UI for the public discovery web. The work is split into two stacked slices on top of PR 2's scaffold, DTOs, and deployed Edge Functions.
 
 ### Files created / modified
 
@@ -291,12 +291,12 @@ Running 4 tests using 4 workers
 - [x] 3.2 Professional selector created with RED unit tests.
 - [x] 3.3 Theme switch and tokens created with RED unit tests.
 
-### Workload / PR boundary
+### Split workload / PR boundaries
 
-- Mode: chained PR slice
-- Current work unit: PR 3 — profile, catalog, selector, and theme UI
-- Boundary: starts after PR 2 verified scaffold/read boundary; ends with the UI files, tests, and Playwright smoke passing. Does not include verification/archive or unrelated tasks.
-- Estimated review budget impact: the new UI/tests/config files exceed 400 lines when counted as a single diff; this batch is the final PR in the planned chain, so the overall change remains split as designed. This slice itself is an honest work unit and should be reviewed as PR 3.
+- Mode: chained PR slices with an explicit size exception for PR 3A
+- PR 3A (`fb28273`): dependency lockfile, UI tokens, selector, theme switch, component tests, and browser-test configuration. The lockfile contributes 986 generated lines; this is the maintainer-approved size exception.
+- PR 3B (`fd832ca`): public layout, SSR profile route, catalog, 404 route, runtime environment fallback, and Playwright smoke coverage.
+- Rollback: revert PR 3B independently for the profile/catalog surface; revert PR 3A independently for the UI foundation and dependency/test tooling.
 
 ### Deviations from design.md
 
