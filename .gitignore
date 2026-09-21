@@ -25,3 +25,6 @@ tsconfig.tsbuildinfo
 # Playwright output
 test-results/
 playwright-report/
+
+# Supabase CLI local state (linked project ref, version stamps)
+supabase/.temp/
