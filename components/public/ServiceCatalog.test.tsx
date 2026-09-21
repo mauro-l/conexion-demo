@@ -6,7 +6,15 @@ describe('ServiceCatalog', () => {
   it('renders services from the DTO with no selector control', () => {
     render(
       <ServiceCatalog
-        services={[{ name: 'Corte', durationMinutes: 40, price: 23000, description: 'Incluye' }]}
+        services={[
+          {
+            publicServiceToken: 'a1b2c3d4e5f60718293a4b5c6d7e8f90',
+            name: 'Corte',
+            durationMinutes: 40,
+            price: 23000,
+            description: 'Incluye',
+          },
+        ]}
       />
     );
 
@@ -19,7 +27,15 @@ describe('ServiceCatalog', () => {
   it('omits the description disclosure when the DTO has none', () => {
     render(
       <ServiceCatalog
-        services={[{ name: 'Barba', durationMinutes: 30, price: 15000, description: null }]}
+        services={[
+          {
+            publicServiceToken: 'b1b2c3d4e5f60718293a4b5c6d7e8f90',
+            name: 'Barba',
+            durationMinutes: 30,
+            price: 15000,
+            description: null,
+          },
+        ]}
       />
     );
 
@@ -27,16 +43,25 @@ describe('ServiceCatalog', () => {
     expect(screen.queryByText('Qué incluye')).toBeNull();
   });
 
-  it('renders an inert CTA with no link or booking target', () => {
+  it('navigates the CTA to /reservar with the encoded service token', () => {
     render(
       <ServiceCatalog
-        services={[{ name: 'Corte', durationMinutes: 40, price: 23000, description: null }]}
+        services={[
+          {
+            publicServiceToken: 'a1b2c3d4e5f60718293a4b5c6d7e8f90',
+            name: 'Corte',
+            durationMinutes: 40,
+            price: 23000,
+            description: null,
+          },
+        ]}
       />
     );
 
-    const cta = screen.getByRole('button', { name: 'Reservar' });
-    expect(cta).toBeInTheDocument();
-    expect(cta.closest('a')).toBeNull();
-    expect(document.querySelector('a[href*="reservar"]')).toBeNull();
+    const cta = screen.getByRole('link', { name: 'Reservar' });
+    expect(cta).toHaveAttribute(
+      'href',
+      `/reservar?service=${encodeURIComponent('a1b2c3d4e5f60718293a4b5c6d7e8f90')}`
+    );
   });
 });

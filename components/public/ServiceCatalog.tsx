@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import type { Service } from '~/types/public';
 
 function formatDuration(minutes: number): string {
@@ -14,8 +15,9 @@ function formatPrice(price: number): string {
 
 /**
  * Database-authoritative service catalog. Descriptions are rendered only when
- * the DTO supplies them; there are no fabricated fallbacks. The CTA is inert:
- * Fase 1 does not book and `/reservar` is not a route.
+ * the DTO supplies them; there are no fabricated fallbacks. Each CTA is a link
+ * to the read-only booking entry point, and the list is keyed by the opaque
+ * public token because service names are not guaranteed unique.
  */
 export function ServiceCatalog({ services }: { services: Service[] }) {
   return (
@@ -23,7 +25,7 @@ export function ServiceCatalog({ services }: { services: Service[] }) {
       <h2 className="section-title">Servicios</h2>
       <div className="ticket-list">
         {services.map((service) => (
-          <article className="ticket" key={service.name}>
+          <article className="ticket" key={service.publicServiceToken}>
             <div className="ticket-main">
               <h3 className="ticket-name">{service.name}</h3>
               {service.description ? (
@@ -40,9 +42,12 @@ export function ServiceCatalog({ services }: { services: Service[] }) {
                 <span className="dot">·</span>
                 <span className="price">{formatPrice(service.price)}</span>
               </span>
-              <button type="button" className="ticket-cta">
+              <Link
+                href={`/reservar?service=${encodeURIComponent(service.publicServiceToken)}`}
+                className="ticket-cta"
+              >
                 Reservar
-              </button>
+              </Link>
             </div>
           </article>
         ))}
