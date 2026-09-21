@@ -42,10 +42,10 @@ Order: 1→2→3→4→5; task 2.1 parallels 4.1.
 
 ## Phase 3: Next route and CTA
 
-- [ ] 3.1 Verify Next 16.2.9 `searchParams` semantics (`package.json` read-only); add `types/booking.ts`, `lib/availability.server.ts` no-store read [scaffold: verification]
-- [ ] 3.2 Add `app/reservar/page.tsx`: server slug, `notFound()` on unknown, ID-free snapshot, server-rendered `Cualquier profesional` [scaffold: not-found; selector: any]
-- [ ] 3.3 Add `components/booking/AvailabilityCalendar.tsx`: slots, empty-calendar success, end-of-flow state, no mutation [availability-read: empty/end-of-flow]
-- [ ] 3.4 Update `types/public.ts`, `lib/public-api.server.ts`, `components/public/ServiceCatalog.tsx`: five-field DTO by token, `<Link href="/reservar?service=...">` [catalog-read: token; scaffold: CTA]
+- [x] 3.1 Verify Next 16.2.9 `searchParams` semantics (`package.json` read-only); add `types/booking.ts`, `lib/availability.server.ts` no-store read [scaffold: verification]
+- [x] 3.2 Add `app/reservar/page.tsx`: server slug, `notFound()` on unknown, ID-free snapshot, server-rendered `Cualquier profesional` [scaffold: not-found; selector: any]
+- [x] 3.3 Add `components/booking/AvailabilityCalendar.tsx`: slots, empty-calendar success, end-of-flow state, no mutation [availability-read: empty/end-of-flow]
+- [x] 3.4 Update `types/public.ts`, `lib/public-api.server.ts`, `components/public/ServiceCatalog.tsx`: five-field DTO by token, `<Link href="/reservar?service=...">` [catalog-read: token; scaffold: CTA]
 
 ## Phase 4: Testing
 
