@@ -1,14 +1,11 @@
-# public-barber-selector Specification
+# Delta for public-barber-selector
 
-## Purpose
-
-Professional selector deferred to the Fase 2 booking flow; the Fase 1 landing renders no selector while the context DTO retains the `barbers` list.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Selector rendered from the barbers list
 
-Fase 1 MUST NOT render or require a professional-selector control on the public landing. The selector is explicitly deferred to the booking flow and returns in Fase 2; this specification does not specify that flow's implementation. The context DTO MUST continue returning `barbers[]` with `name`, `alias`, `description`, and `photoUrl`; only the selector control is deferred.
+Fase 1 MUST NOT render or require a professional-selector control on the public landing. The selector is explicitly deferred to the booking flow and returns in Fase 2; this delta does not specify that flow's implementation. The context DTO MUST continue returning `barbers[]` with `name`, `alias`, `description`, and `photoUrl`; only the selector control is deferred.
+(Previously: The public landing was required to render a functional-looking selector populated from `barbers`.)
 
 #### Scenario: Single barber today
 

@@ -1,14 +1,11 @@
-# public-context-read Specification
+# Delta for public-context-read
 
-## Purpose
-
-Public barbershop context by unique identifier, via the Edge Function/RPC boundary only.
-
-## Requirements
+## MODIFIED Requirements
 
 ### Requirement: Unique public identifier and non-enumeration
 
 `Barberia` MUST expose a slug, unique by database constraint, resolved for the public landing at `/` from the server-only `BARBERSHOP_PUBLIC_SLUG` configuration rather than from a URL segment. Non-existent and unpublished configured slugs MUST yield the same consistent not-found response on every public read, indistinguishable to callers (plan_web_publica.md §6).
+(Previously: A unique slug resolved the public route `/b/[slug]` from a URL parameter.)
 
 #### Scenario: Duplicate slug rejected
 
@@ -32,6 +29,7 @@ Public barbershop context by unique identifier, via the Edge Function/RPC bounda
 ### Requirement: Context DTO
 
 The context read MUST return exactly `{ barberia: { name, description, address, hours, whatsappUrl, instagramHandle, instagramUrl }, barbers: [{ name, alias, description, photoUrl }] }` — no internal ids (`id`, `barberia_id`, `barbero_id`, `users_id`) and no `publicToken` (deferred; additive later). The seven `barberia` fields and four `barbers` fields are the complete field sets, including nullable values where the live function returns them.
+(Previously: The `barberia` object was specified as exactly `name` and `description`.)
 
 #### Scenario: Exact field set
 
@@ -43,6 +41,7 @@ The context read MUST return exactly `{ barberia: { name, description, address, 
 ### Requirement: Edge Function/RPC-only read boundary
 
 Every public read MUST traverse the Edge Function/RPC boundary. `anon` MUST hold zero table grants and MUST gain none (db-baseline.md §4–5); direct REST/PostgREST table access by `anon` MUST be impossible.
+(Previously: The same Edge Function/RPC-only boundary applied to `/b/[slug]` reads.)
 
 #### Scenario: Anonymous direct-table probe
 

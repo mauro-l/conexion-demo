@@ -1,14 +1,17 @@
-# web-app-scaffold Specification
+# Delta for web-app-scaffold
 
-## Purpose
+## RENAMED Requirements
 
-Next.js 16 App Router + React + TypeScript public landing at `/` and its verification surface.
+### Requirement: Scaffold, public route, and verification → Next public scaffold, route, parity, and verification
 
-## Requirements
+(Reason: Astro + `/b/[slug]` becomes Next.js 16 App Router + `/`; the previous name described the Astro scaffold and must no longer do so.)
+
+## MODIFIED Requirements
 
 ### Requirement: Next public scaffold, route, parity, and verification
 
 The repository MUST provide a Next.js 16 App Router application with React 19 and TypeScript. Server Components MUST be the default, and only the theme control MAY be a Client Component. The landing MUST be served at `/`, resolve `BARBERSHOP_PUBLIC_SLUG` server-side, and render the hero, barbershop information, and service catalog from the public DTO reads rather than hardcoded arrays. The dynamic `/b/[slug]` route MUST NOT exist. Astro dependencies, scripts, configuration, and `astro check` MUST be absent. The project MUST define `lint` as `eslint .` with flat configuration and `eslint-config-next`, `typecheck` as `tsc --noEmit`, `build` as `next build`, `test` as Vitest, and a Playwright E2E command; it MUST NOT use `next lint`.
+(Previously: The repository provided an Astro + React islands + TypeScript app serving `/b/[slug]` with Astro build and typecheck verification.)
 
 #### Scenario: Landing renders from public reads
 

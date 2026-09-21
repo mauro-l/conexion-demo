@@ -1,14 +1,23 @@
 # openspec/config.yaml — SDD/openspec workspace config for 'conexion-demo'
 # This file defines workspace-level SDD metadata, including strict_tdd and project list.
+# Last re-detected: 2026-09-21 (testing capabilities refresh; supersedes the 2026-09-11 greenfield detection).
 
 workspace:
   name: conexion-demo
   description: |-
-    Astro + React islands + TypeScript web. Supabase Edge Functions. Greenfield, no test infra yet.
+    Astro SSR + React islands + TypeScript web with Supabase Edge Functions and PostgreSQL/RLS.
+    Test stack is live: Vitest (unit/integration) and Playwright (E2E). A Next.js migration is planned next.
+  # strict_tdd is false: no single workspace-level command covers the complete in-scope test set.
+  # `npm test` runs Vitest only (src/**); the Playwright E2E suite in tests/e2e has no npm script.
+  # No coverage instrumentation is installed and there is no CI. See openspec/testing-capabilities.md.
   strict_tdd: false
   projects:
     - name: conexion-demo
       path: .
-      stack: "Astro, React (islands), TypeScript, Supabase Edge Functions, PostgreSQL/RLS"
-      has_tests: false
-      test_command: null
+      stack: "Astro SSR (@astrojs/node standalone), React 18 islands, TypeScript (strict), Supabase Edge Functions (Deno), PostgreSQL/RLS"
+      has_tests: true
+      # Unit + integration layers. Runs Vitest in jsdom over src/**/*.{test,spec}.{ts,tsx}.
+      test_command: "npm test"
+      # E2E layer. Not exposed as an npm script; requires a prior `npm run build`
+      # because Playwright's webServer runs `npm run preview` against ./dist.
+      e2e_test_command: "npx playwright test"
