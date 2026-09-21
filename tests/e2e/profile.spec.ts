@@ -35,18 +35,13 @@ test.describe('public barbershop profile page', () => {
     expect(html).not.toContain('"id":');
   });
 
-  test('professional selector is data-driven and selectable', async ({ page }) => {
-    const { body: context } = await fetchJson('/functions/v1/public-context?slug=conexion-barberia');
-    const expectedBarber = context.barbers[0]?.alias ?? context.barbers[0]?.name;
-
+  test('landing keeps booking controls out of the discovery view', async ({ page }) => {
     await page.goto('/b/conexion-barberia');
 
-    const trigger = page.locator('.prof-select');
-    await expect(trigger).toContainText(expectedBarber);
-    await trigger.click();
-
-    const options = page.locator('.prof-option');
-    await expect(options).toHaveCount(context.barbers.length);
+    await expect(page.locator('.prof-select')).toHaveCount(0);
+    await expect(page.locator('.cal-jump-btn')).toHaveCount(0);
+    await expect(page.getByText('Iniciar sesión')).toHaveCount(0);
+    await expect(page.getByText('@conexion.barber')).toBeVisible();
   });
 
   test('theme switch toggles light and dark', async ({ page }) => {

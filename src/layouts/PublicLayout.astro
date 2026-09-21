@@ -5,7 +5,7 @@ interface Props {
   title?: string;
 }
 
-const { title = 'Conexión Barber | Reservá tu turno' } = Astro.props;
+const { title = 'Conexión Barbería | Reservá tu turno' } = Astro.props;
 ---
 
 <!doctype html>
@@ -40,13 +40,11 @@ const { title = 'Conexión Barber | Reservá tu turno' } = Astro.props;
   </head>
   <body>
     <header class="topbar container">
-      <div class="logo">CONEXIÓN <span>BARBER</span></div>
+      <div class="logo">Conexión Barbería</div>
       <div class="topbar-actions">
-        <a class="login-link" href="#">Iniciar sesión</a>
         <ThemeSwitch client:load />
       </div>
     </header>
     <slot />
   </body>
 </html>
-

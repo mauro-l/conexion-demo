@@ -1,7 +1,6 @@
 ---
 import PublicLayout from '../../layouts/PublicLayout.astro';
 import ServiceCatalog from '../../components/ServiceCatalog.astro';
-import { ProfessionalSelector } from '../../components/ProfessionalSelector.tsx';
 import { createPublicApiClient, PublicApiError } from '../../lib/public-api.server';
 import type { Context, Catalog } from '../../types/public';
 
@@ -34,8 +33,16 @@ function initials(name: string): string {
 }
 
 const title = context?.barberia.name
-  ? `${context.barberia.name} | Conexión Barber`
-  : 'Conexión Barber | Reservá tu turno';
+  ? `${context.barberia.name} | Reservá tu turno`
+  : 'Conexión Barbería | Reservá tu turno';
+
+const profileInfo = {
+  address: context.barberia.address ?? 'Av. Gral. Mosconi 3429, C1419, CABA',
+  hours: context.barberia.hours ?? 'Hoy 10:00–20:00',
+  whatsappUrl: context.barberia.whatsappUrl ?? '#',
+  instagramHandle: context.barberia.instagramHandle ?? '@conexion.barber',
+  instagramUrl: context.barberia.instagramUrl ?? 'https://instagram.com/conexion.barber',
+};
 ---
 
 <PublicLayout title={title}>
@@ -58,7 +65,24 @@ const title = context?.barberia.name
       <h1 class="hero-title">{context.barberia.name}</h1>
       {context.barberia.description && <p class="tagline">{context.barberia.description}</p>}
 
-      <ProfessionalSelector barbers={context.barbers} client:load />
+      <div class="info-list">
+        <div class="info-row">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-7-5.5-7-11a7 7 0 0 1 14 0c0 5.5-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>
+          <span>{profileInfo.address}</span>
+        </div>
+        <div class="info-row">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+          <span>{profileInfo.hours}</span>
+        </div>
+        <div class="info-row">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20.5 3.5a10 10 0 0 0-16.9 9.8L2 21l7.9-1.5A10 10 0 1 0 20.5 3.5z"/></svg>
+          <a href={profileInfo.whatsappUrl}>Contactanos por WhatsApp</a>
+        </div>
+        <div class="info-row">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.5" cy="6.5" r="1" fill="currentColor" stroke="none"/></svg>
+          <a href={profileInfo.instagramUrl}>{profileInfo.instagramHandle}</a>
+        </div>
+      </div>
     </section>
 
     <ServiceCatalog services={catalog.services} />

@@ -57,6 +57,11 @@ INSERT INTO public."Barberia" (
   nombre,
   public_slug,
   description,
+  direccion,
+  horario_publico,
+  whatsapp_url,
+  instagram_handle,
+  instagram_url,
   publicado,
   dias_habiles,
   hora_apertura,
@@ -65,6 +70,11 @@ INSERT INTO public."Barberia" (
   'Conexión Barbería',
   'conexion-barberia',
   'Barbería de demostración para la web pública.',
+  'Av. Gral. Mosconi 3429, C1419, CABA',
+  'Hoy 10:00–20:00',
+  '#',
+  '@conexion.barber',
+  'https://instagram.com/conexion.barber',
   true,
   ARRAY[1,2,3,4,5,6]::int2[],
   '09:00'::time,
@@ -73,6 +83,11 @@ INSERT INTO public."Barberia" (
 ON CONFLICT (public_slug) DO UPDATE SET
   nombre = EXCLUDED.nombre,
   description = EXCLUDED.description,
+  direccion = EXCLUDED.direccion,
+  horario_publico = EXCLUDED.horario_publico,
+  whatsapp_url = EXCLUDED.whatsapp_url,
+  instagram_handle = EXCLUDED.instagram_handle,
+  instagram_url = EXCLUDED.instagram_url,
   publicado = EXCLUDED.publicado,
   dias_habiles = EXCLUDED.dias_habiles,
   hora_apertura = EXCLUDED.hora_apertura,
@@ -126,16 +141,16 @@ WITH demo_barber AS (
   WHERE b.public_slug = 'conexion-barberia'
     AND u.email = 'demo.barbero@example.com'
 )
-INSERT INTO public."Servicio" (nombre, duracion, precio, barbero_id)
-SELECT s.nombre, s.duracion, s.precio, db.barbero_id
+INSERT INTO public."Servicio" (nombre, duracion, precio, descripcion, barbero_id)
+SELECT s.nombre, s.duracion, s.precio, s.descripcion, db.barbero_id
 FROM demo_barber db
 CROSS JOIN (
   VALUES
-    ('Corte de pelo', 40, 23000),
-    ('Corte y barba + toalla caliente', 60, 32000),
-    ('Corte y arreglo de barba', 50, 28000),
-    ('Barba + toalla caliente', 30, 21000)
-) AS s(nombre, duracion, precio)
+    ('Corte de pelo', 40, 23000, 'Incluye asesoría en visagismo, corte de cabello, gaseosa de cortesía y lavado post corte.'),
+    ('Corte y barba + toalla caliente', 60, 32000, 'Incluye asesoría en visagismo, corte de cabello, arreglo de barba a máquina, afeitado con toalla caliente y fría, gaseosa y lavado de cabello.'),
+    ('Corte y arreglo de barba', 50, 28000, 'Incluye asesoría en visagismo, corte de cabello y arreglo de barba con máquina y afeitado.'),
+    ('Barba + toalla caliente', 30, 21000, 'Incluye asesoría en visagismo y afeitado con toallas caliente y fría, más gaseosa de cortesía.')
+) AS s(nombre, duracion, precio, descripcion)
 WHERE NOT EXISTS (
   SELECT 1
   FROM public."Servicio" existing

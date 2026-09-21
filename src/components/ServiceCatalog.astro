@@ -7,6 +7,23 @@ interface Props {
 
 const { services } = Astro.props;
 
+// Keep the prototype details visible while older public DTOs are upgraded.
+const prototypeDetails: Record<string, string> = {
+  'Corte de pelo':
+    'Incluye asesoría en visagismo, corte de cabello, gaseosa de cortesía y lavado post corte.',
+  'Corte y barba + toalla caliente':
+    'Incluye asesoría en visagismo, corte de cabello, arreglo de barba a máquina, afeitado con toalla caliente y fría, gaseosa y lavado de cabello.',
+  'Corte y arreglo de barba':
+    'Incluye asesoría en visagismo, corte de cabello y arreglo de barba con máquina y afeitado.',
+  'Barba + toalla caliente':
+    'Incluye asesoría en visagismo y afeitado con toallas caliente y fría, más gaseosa de cortesía.',
+};
+
+const servicesWithDetails = services.map((service) => ({
+  ...service,
+  description: service.description ?? prototypeDetails[service.name],
+}));
+
 function formatDuration(minutes: number): string {
   if (minutes < 60) return `${minutes} min`;
   const hours = Math.floor(minutes / 60);
@@ -24,10 +41,16 @@ function formatPrice(price: number): string {
   <h2 class="section-title">Servicios</h2>
   <div class="ticket-list">
     {
-      services.map((service) => (
+      servicesWithDetails.map((service) => (
         <article class="ticket">
           <div class="ticket-main">
             <h3 class="ticket-name">{service.name}</h3>
+            {service.description && (
+              <details class="ticket-details">
+                <summary>Qué incluye</summary>
+                <p>{service.description}</p>
+              </details>
+            )}
           </div>
           <div class="ticket-perf" />
           <div class="ticket-footer">
@@ -41,7 +64,7 @@ function formatPrice(price: number): string {
             </button>
           </div>
         </article>
-      ))
+    ))
     }
   </div>
 </section>
