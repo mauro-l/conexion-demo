@@ -56,8 +56,8 @@ to the shared allowlist only for legacy direct callers. Use
 `PUBLIC_AVAILABILITY_HMAC_SECRET`, shared with the future server writer.
 
 Tokens are `base64url(header).base64url(payload).base64url(signature)` with
-HS256 and `{v,slug,service,start,end,iat,exp}`; local strings have no `Z`, and
-`exp=iat+600`. Edge signs after the RPC. Verify constant-time, reject `now>=exp`
+HS256 and `{slug,service,start,end,iat,exp}`; the payload carries no `v` field.
+Local strings have no `Z`, and `exp=iat+600`. Edge signs after the RPC. Verify constant-time, reject `now>=exp`
 (no positive expiry tolerance; allow five seconds before `iat` for skew). Fase 3
 also recomputes Buenos Aires `start >= now+30 minutes` before mutation.
 

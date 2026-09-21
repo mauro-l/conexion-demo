@@ -4,7 +4,7 @@
 
 ### Requirement: Catalog DTO
 
-The catalog read MUST return `{ services: [{ publicServiceToken, name, durationMinutes, price, description }] }`; each service MUST expose exactly these five fields, with nullable `description` where supported. `publicServiceToken` MUST be opaque, unique, non-NULL, and MUST NOT be an internal identifier. The response MUST expose no `id` or `barbero_id`.
+The catalog read MUST return `{ services: [{ publicServiceToken, name, durationMinutes, price, description }] }`; each service MUST expose exactly these five fields, with nullable `description` where supported. `publicServiceToken` MUST be opaque, unique, non-NULL, and MUST NOT be an internal identifier. It is a random uncorrelated value (not a derived or reversible encoding of any internal id), and it is a different value from the availability token: `publicServiceToken` is the catalog's lookup handle, while the signed availability token described in `public-availability-read` merely references it as a claim. The response MUST expose no `id` or `barbero_id`.
 
 (Previously: each service exposed exactly four fields and had no public token.)
 
@@ -33,4 +33,6 @@ Services MUST resolve through `Servicio.barbero_id` and the published shop's act
 #### Scenario: Null duration
 - GIVEN a service whose database duration is NULL
 - WHEN availability is requested for its token
-- THEN the service is excluded from slot computation
+- THEN the request succeeds with HTTP 200 and still returns the service snapshot
+- AND the `days` array is empty
+- AND the service is excluded from slot computation, with no error response and no fallback duration

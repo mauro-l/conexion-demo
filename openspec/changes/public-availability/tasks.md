@@ -49,13 +49,13 @@ Order: 1→2→3→4→5; task 2.1 parallels 4.1.
 
 ## Phase 4: Testing
 
-- [ ] 4.1 Vitest: DTO/no-store parsing, 12:00→12:10:01 expiry rejection, CTA navigation, NULL-duration empty-`days`, no-mutation state [availability-read: expiry/end-of-flow]
-- [ ] 4.2 SQL/Edge integration: valid/malformed/window/lead/NULL/occupancy/blocks/adjacency; fixture cases deferred [availability-read: boundary/occupied]
-- [ ] 4.3 Playwright (`npm run build` first): CTA, privacy, not-found, read-only flow [scaffold: CTA/privacy/not-found]
+- [x] 4.1 Vitest: DTO/no-store parsing, 12:00→12:10:01 expiry rejection, CTA navigation, NULL-duration empty-`days`, no-mutation state [availability-read: expiry/end-of-flow]
+- [x] 4.2 SQL/Edge integration: valid/malformed/window/lead/NULL/occupancy/blocks/adjacency; fixture cases deferred [availability-read: boundary/occupied]
+- [x] 4.3 Playwright (`npm run build` first): CTA, privacy, not-found, read-only flow [scaffold: CTA/privacy/not-found]
 
 ## Phase 5: Decisions and docs
 
-- [ ] 5.1 Lock: (a) `v` dropped, (b) NULL duration → `200` empty `days`, (c) `Barberia` NULL → no slots, (d) `searchParams` finding [all specs]
-- [ ] 5.2 Deferred log: occupied/blocked/NULL-schedule/10:00 cases need fixtures [availability-read]
+- [x] 5.1 Lock: (a) `v` dropped, (b) NULL duration → `200` empty `days`, (c) `Barberia` NULL → no slots, (d) `searchParams` finding [all specs]
+- [x] 5.2 Deferred log: occupied/blocked/NULL-schedule/10:00 cases need fixtures [availability-read]
 
 RED tests: none — matrix all `N/A`.
