@@ -31,7 +31,7 @@ Chain strategy: stacked-to-main
 Order: 1→2→3→4→5; task 2.1 parallels 4.1.
 
 - [x] 1.1 Discover live `Turno` predicate via `pg_constraint`/`pg_get_constraintdef`; record text [availability-read: contract]
-- [x] 1.2 Create `supabase/migrations/phase11_public_availability.sql`: `pgcrypto`, token backfill/default/`NOT NULL`/`UNIQUE` [catalog-read: resolution]
+- [x] 1.2 Create `supabase/migrations/phase11_public_service_token.sql`: `pgcrypto`, token backfill/default/`NOT NULL`/`UNIQUE`, tokenized catalog DTO [catalog-read: resolution]
 - [x] 1.3 Implement `public.public_availability(p_slug,p_service_token)` ID-free JSON; `[today,today+14)`, `0=Sunday`, `start>=now+30min`, shop∩barber, NULL barber yields no slots, NULL duration excludes service, `pendiente/confirmado/completado` occupy [availability-read: window/occupancy]
 - [x] 1.4 `REVOKE` PUBLIC/anon/authenticated + `GRANT` service_role; probe grants [availability-read: valid read]
 

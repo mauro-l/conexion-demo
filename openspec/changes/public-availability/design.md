@@ -28,7 +28,7 @@ Before `Turno`, the RPC finds any `contype='x'` constraint on `public."Turno"`, 
 
 ## Migration and Edge
 
-Create `supabase/migrations/phase11_public_availability.sql` (the next sequential project convention):
+Create `supabase/migrations/phase11_public_service_token.sql` (token infrastructure and the tokenized catalog DTO) and `supabase/migrations/phase12_public_availability.sql` (the availability RPC), following the project's sequential `phaseN_` convention. Splitting the database work this way keeps each migration under the 400-line review budget and gives each one a single reviewer concern; `phase12` requires `phase11` to be applied first:
 
 ```sql
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
@@ -85,14 +85,17 @@ SQL clock seam, live tests cannot prove occupied/blocked/NULL-schedule or exact
 
 | Slice | Files | Estimate |
 |---|---|---:|
-| RPC + migration | `supabase/migrations/phase11_public_availability.sql` | 280–360 |
+| Token + catalog migration | `supabase/migrations/phase11_public_service_token.sql` (+ rollback) | 130–160 |
+| Availability RPC migration | `supabase/migrations/phase12_public_availability.sql` (+ rollback) | 300–340 |
 | Edge | `supabase/functions/public-availability/*`, shared HTTP | 100–150 |
 | Next route/UI | `app/reservar`, `components/booking`, `lib`, `types` | 220–300 |
 | Catalog token | `ServiceCatalog`, public DTO/parser | 30–60 |
 | Tests/docs | Vitest, Playwright, contracts | 250–350 |
 
-Total is above the 400-line review budget: use these five autonomous chained-PR
-slices, each with its own verification and rollback.
+Total is above the 400-line review budget: use these autonomous chained-PR
+slices, each with its own verification and rollback. The database work is split
+across two migrations so neither file alone exceeds the 400-line budget and each
+carries a single reviewer concern; `phase12` depends on `phase11`.
 
 ## Threat Matrix
 
