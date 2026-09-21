@@ -1,4 +1,15 @@
-import type { Catalog, Context, PublicError } from '~/types/public';
+import type { Catalog, Context } from '~/types/public';
+import {
+  DEFAULT_TIMEOUT_MS,
+  PublicApiError,
+  fetchPublicJson,
+  isRecord,
+  readEnv,
+  validateSlug,
+  type FetchLike,
+} from '~/lib/public-http.server';
+
+export { PublicApiError };
 
 /**
  * Server-only client for the public discovery reads.
@@ -6,25 +17,14 @@ import type { Catalog, Context, PublicError } from '~/types/public';
  * Every read traverses the Edge Function/RPC boundary. Credentials come from
  * the server environment (`SUPABASE_URL`, `SUPABASE_ANON_KEY`) and must never
  * be exposed through `NEXT_PUBLIC_*` or the client bundle.
+ *
+ * The shared error type, env reader, guards, slug validator, and request
+ * pipeline live in `lib/public-http.server.ts`; this module keeps only the
+ * cached context/catalog specifics. `PublicApiError` is re-exported so the
+ * existing public import path stays stable.
  */
 
-export class PublicApiError extends Error {
-  constructor(
-    public readonly code: string,
-    message: string,
-    public readonly retryable: boolean = false
-  ) {
-    super(message);
-    this.name = 'PublicApiError';
-  }
-}
-
-const SLUG_RE = /^[a-z0-9-]{1,63}$/;
-const DEFAULT_TIMEOUT_MS = 5000;
 const REVALIDATE_SECONDS = 60;
-
-type FetchInit = RequestInit & { next?: { revalidate?: number } };
-type FetchLike = (input: string, init?: FetchInit) => Promise<Response>;
 
 export type PublicApiClientOptions = {
   baseUrl?: string;
@@ -32,21 +32,6 @@ export type PublicApiClientOptions = {
   timeoutMs?: number;
   fetchImpl?: FetchLike;
 };
-
-function readEnv(name: 'SUPABASE_URL' | 'SUPABASE_ANON_KEY'): string | undefined {
-  const value = process.env[name];
-  return value && value.length > 0 ? value : undefined;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
-function validateSlug(slug: string): void {
-  if (!SLUG_RE.test(slug)) {
-    throw new PublicApiError('INVALID_INPUT', 'Invalid slug');
-  }
-}
 
 function parseContext(body: unknown): Context {
   if (
@@ -72,6 +57,8 @@ function parseCatalog(body: unknown): Catalog {
   for (const service of body.services) {
     if (
       !isRecord(service) ||
+      typeof service.publicServiceToken !== 'string' ||
+      service.publicServiceToken.length === 0 ||
       typeof service.name !== 'string' ||
       typeof service.durationMinutes !== 'number' ||
       typeof service.price !== 'number'
@@ -80,17 +67,6 @@ function parseCatalog(body: unknown): Catalog {
     }
   }
   return body as unknown as Catalog;
-}
-
-function toPublicApiError(error: unknown): PublicApiError {
-  if (error instanceof PublicApiError) return error;
-  if (error instanceof Error && error.name === 'TimeoutError') {
-    return new PublicApiError('TIMEOUT', 'Public read timed out', true);
-  }
-  if (error instanceof Error && error.name === 'AbortError') {
-    return new PublicApiError('TIMEOUT', 'Public read timed out', true);
-  }
-  return new PublicApiError('NETWORK_ERROR', 'Public read failed', true);
 }
 
 export function createPublicApiClient(options: PublicApiClientOptions = {}) {
@@ -117,37 +93,18 @@ export function createPublicApiClient(options: PublicApiClientOptions = {}) {
     validateSlug(slug);
     const url = `${baseUrl}/functions/v1/${fn}?slug=${encodeURIComponent(slug)}`;
 
-    let response: Response;
-    try {
-      response = await fetchImpl(url, {
-        method: 'GET',
+    return fetchPublicJson(
+      {
+        fetchImpl,
+        url,
         headers,
-        signal: AbortSignal.timeout(timeoutMs),
+        timeoutMs,
         // The only cached read surface: approved public DTOs with a one-minute
         // staleness bound. Token/PII and availability reads remain uncached.
-        next: { revalidate: REVALIDATE_SECONDS },
-      });
-    } catch (error) {
-      throw toPublicApiError(error);
-    }
-
-    let body: unknown;
-    try {
-      body = await response.json();
-    } catch {
-      throw new PublicApiError('INVALID_RESPONSE', 'Public read returned invalid JSON.');
-    }
-
-    if (!response.ok) {
-      const err = body as PublicError | undefined;
-      throw new PublicApiError(
-        err?.error?.code ?? 'INTERNAL_ERROR',
-        err?.error?.message ?? 'Request failed',
-        err?.error?.retryable ?? false
-      );
-    }
-
-    return parse(body);
+        cache: { next: { revalidate: REVALIDATE_SECONDS } },
+      },
+      parse
+    );
   }
 
   return {
