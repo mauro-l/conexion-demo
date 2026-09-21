@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { ThemeSwitch } from './ThemeSwitch';
-import { THEME_STORAGE_KEY } from '../lib/theme';
+import { ThemeSwitch } from '~/components/ThemeSwitch';
+import { THEME_STORAGE_KEY } from '~/lib/theme';
 
 describe('ThemeSwitch', () => {
   beforeEach(() => {

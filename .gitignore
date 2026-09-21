@@ -4,6 +4,12 @@ node_modules/
 # Build output
 dist/
 .astro/
+.next/
+.next-unknown-slug/
+out/
+
+# TypeScript incremental build info
+tsconfig.tsbuildinfo
 
 # Environment
 .env
@@ -18,3 +24,4 @@ dist/
 
 # Playwright output
 test-results/
+playwright-report/

@@ -1,8 +1,17 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const PUBLIC_SUPABASE_URL = 'https://vcgyiyrboumimwgdsitf.supabase.co';
-const PUBLIC_SUPABASE_ANON_KEY =
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZjZ3lpeXJib3VtaW13Z2RzaXRmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyMjY3MTMsImV4cCI6MjEwMjgwMjcxM30.fkvg_r4Cggv3v3v1tIV2WdXkd4LjD2cXXvyzITB5zC4';
+// Load the gitignored local environment so credentials and the configured slug
+// are never embedded in this file. CI supplies real environment variables.
+if (typeof process.loadEnvFile === 'function') {
+  try {
+    process.loadEnvFile('.env');
+  } catch {
+    // .env is optional.
+  }
+}
+
+const LANDING_PORT = 3000;
+const NOT_FOUND_PORT = 3100;
 
 export default defineConfig({
   testDir: './tests/e2e',
@@ -12,23 +21,39 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'list',
   use: {
-    baseURL: 'http://localhost:4321',
     trace: 'on-first-retry',
   },
   projects: [
     {
-      name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      name: 'landing',
+      testMatch: /profile\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], baseURL: `http://localhost:${LANDING_PORT}` },
+    },
+    {
+      name: 'not-found',
+      testMatch: /not-found\.spec\.ts/,
+      use: { ...devices['Desktop Chrome'], baseURL: `http://localhost:${NOT_FOUND_PORT}` },
     },
   ],
-  webServer: {
-    command: 'npm run preview',
-    url: 'http://localhost:4321/b/conexion-barberia',
-    reuseExistingServer: !process.env.CI,
-    timeout: 60000,
-    env: {
-      PUBLIC_SUPABASE_URL,
-      PUBLIC_SUPABASE_ANON_KEY,
+  webServer: [
+    {
+      command: `npm run dev -- --port ${LANDING_PORT}`,
+      url: `http://localhost:${LANDING_PORT}`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120000,
     },
-  },
+    {
+      // Unknown configured slug: exercises the not-found boundary. Readiness
+      // polls a static public asset because every app route returns 404 here.
+      command: `npm run dev -- --port ${NOT_FOUND_PORT}`,
+      url: `http://localhost:${NOT_FOUND_PORT}/cover.jpg`,
+      reuseExistingServer: !process.env.CI,
+      timeout: 120000,
+      env: {
+        BARBERSHOP_PUBLIC_SLUG: 'zz-unknown-slug',
+        PUBLIC_SITE_ORIGIN: `http://localhost:${NOT_FOUND_PORT}`,
+        NEXT_DIST_DIR: '.next-unknown-slug',
+      },
+    },
+  ],
 });
