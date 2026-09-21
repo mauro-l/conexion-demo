@@ -37,8 +37,8 @@ Order: 1→2→3→4→5; task 2.1 parallels 4.1.
 
 ## Phase 2: Edge
 
-- [ ] 2.1 Create `supabase/functions/public-availability/index.ts`: validate `slug`/`service`/`date`, reject unknown fields, service-role RPC, always `no-store` [availability-read: contract/invalid]
-- [ ] 2.2 Stable errors `INVALID_INPUT`/`AVAILABILITY_RANGE_EXCEEDED`/`PUBLIC_RESOURCE_NOT_FOUND`/`INTERNAL_ERROR`; HMAC tokens sans `v`, `exp=iat+600` [availability-read: tokens]
+- [x] 2.1 Create `supabase/functions/public-availability/index.ts`: validate `slug`/`service`/`date`, reject unknown fields, service-role RPC, always `no-store` [availability-read: contract/invalid]
+- [x] 2.2 Stable errors `INVALID_INPUT`/`AVAILABILITY_RANGE_EXCEEDED`/`PUBLIC_RESOURCE_NOT_FOUND`/`INTERNAL_ERROR`; HMAC tokens sans `v`, `exp=iat+600` [availability-read: tokens]
 
 ## Phase 3: Next route and CTA
 
