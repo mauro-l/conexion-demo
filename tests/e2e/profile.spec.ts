@@ -102,7 +102,7 @@ test.describe('public landing at /', () => {
     expect(bundle).not.toContain(requiredEnv('BARBERSHOP_PUBLIC_SLUG'));
   });
 
-  test('keeps booking controls out, the CTA inert, and no fabricated defaults', async ({ page }) => {
+  test('keeps booking controls out of the landing and invents no defaults', async ({ page }) => {
     const slug = requiredEnv('BARBERSHOP_PUBLIC_SLUG');
     const { body } = await fetchPublic<PublicContextBody>(`/functions/v1/public-context?slug=${slug}`);
 
@@ -118,11 +118,9 @@ test.describe('public landing at /', () => {
     if (!body.barberia.hours) expect(html).not.toContain('Hoy 10:00–20:00');
     if (!body.barberia.instagramHandle) expect(html).not.toContain('@conexion.barber');
 
-    await page.locator('.ticket-cta').first().click();
-    expect(new URL(page.url()).pathname).toBe('/');
-
-    const booking = await page.goto('/reservar');
-    expect(booking?.status()).toBe(404);
+    // The catalog CTA is now a real link into the read-only booking route; its
+    // navigation and the slot flow are covered by public-availability.spec.ts.
+    await expect(page.locator('.ticket-cta').first()).toHaveAttribute('href', /^\/reservar\?service=/);
   });
 
   test('serves the approved local cover asset', async ({ page }) => {

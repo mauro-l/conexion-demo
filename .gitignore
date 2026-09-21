@@ -5,7 +5,6 @@ node_modules/
 dist/
 .astro/
 .next/
-.next-unknown-slug/
 out/
 
 # TypeScript incremental build info
