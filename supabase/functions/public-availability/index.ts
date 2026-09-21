@@ -1,5 +1,8 @@
 import { createServiceClient } from '../_shared/supabase.ts';
 import { errorResponse, handleOptions, jsonResponse } from '../_shared/http.ts';
+// Token signing lives in one shared module so the Edge, Vitest, and the future
+// Fase 3 writer all use the exact same implementation.
+import { signAvailabilityToken } from '../_shared/availability-token.ts';
 
 const FUNCTION_NAME = 'public-availability';
 const SLUG_RE = /^[a-z0-9-]{1,63}$/;
@@ -7,62 +10,6 @@ const SLUG_RE = /^[a-z0-9-]{1,63}$/;
 const SERVICE_TOKEN_RE = /^[a-f0-9]{32}$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const ALLOWED_QUERY_PARAMS = new Set(['slug', 'service', 'date']);
-const TOKEN_TTL_SECONDS = 600;
-
-export interface AvailabilityTokenClaims {
-  slug: string;
-  service: string;
-  start: string;
-  end: string;
-}
-
-function base64UrlFromBytes(bytes: Uint8Array): string {
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  // Unpadded base64url: it is a URL segment, not standard base64.
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-function base64UrlFromJson(value: unknown): string {
-  return base64UrlFromBytes(new TextEncoder().encode(JSON.stringify(value)));
-}
-
-/**
- * Signs one availability token as `base64url(header).base64url(payload).base64url(signature)`
- * (HS256). Pure and side-effect-free: `secret` and `iatSeconds` are injected, so a
- * later slice can unit-test it with fixed inputs without booting the HTTP server.
- * The payload carries exactly `slug`, `service`, `start`, `end`, `iat`, `exp`
- * (no version field), and `start`/`end` stay exactly as the RPC returned them.
- */
-export async function signAvailabilityToken(
-  claims: AvailabilityTokenClaims,
-  secret: string,
-  iatSeconds: number
-): Promise<string> {
-  const header = base64UrlFromJson({ alg: 'HS256', typ: 'JWT' });
-  const payload = base64UrlFromJson({
-    slug: claims.slug,
-    service: claims.service,
-    start: claims.start,
-    end: claims.end,
-    iat: iatSeconds,
-    exp: iatSeconds + TOKEN_TTL_SECONDS,
-  });
-  const signingInput = `${header}.${payload}`;
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign']
-  );
-  const signature = await crypto.subtle.sign(
-    'HMAC',
-    key,
-    new TextEncoder().encode(signingInput)
-  );
-  return `${signingInput}.${base64UrlFromBytes(new Uint8Array(signature))}`;
-}
 
 function isCalendarDate(value: string): boolean {
   if (!DATE_RE.test(value)) return false;

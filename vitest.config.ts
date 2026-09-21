@@ -21,6 +21,7 @@ export default defineConfig({
       'components/**/*.{test,spec}.{ts,tsx}',
       'lib/**/*.{test,spec}.{ts,tsx}',
       'types/**/*.{test,spec}.{ts,tsx}',
+      'supabase/**/*.{test,spec}.{ts,tsx}',
     ],
     exclude: ['tests/e2e/**', 'node_modules/**', '.next/**'],
     setupFiles: ['./vitest.setup.ts'],
