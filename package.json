@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:db": "bash scripts/db-test.sh",
     "test:e2e": "playwright test"
   },
   "dependencies": {
