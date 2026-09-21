@@ -38,12 +38,14 @@ export function mergeHeaders(...sources: Headers[]): Headers {
 export function jsonResponse(
   body: unknown,
   status = 200,
-  origin?: string | null
+  origin?: string | null,
+  noStore = false
 ): Response {
   const headers = mergeHeaders(
     securityHeaders(),
     new Headers({ 'Content-Type': 'application/json' })
   );
+  if (noStore) headers.set('Cache-Control', 'no-store');
   if (origin && isAllowedOrigin(origin)) {
     headers.set('Access-Control-Allow-Origin', origin);
     headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -58,13 +60,15 @@ export function errorResponse(
   message: string,
   status: number,
   retryable = false,
-  origin?: string | null
+  origin?: string | null,
+  noStore = false
 ): Response {
-  return jsonResponse({ error: { code, message, retryable } }, status, origin);
+  return jsonResponse({ error: { code, message, retryable } }, status, origin, noStore);
 }
 
-export function handleOptions(origin: string | null): Response {
+export function handleOptions(origin: string | null, noStore = false): Response {
   const headers = mergeHeaders(securityHeaders(), new Headers());
+  if (noStore) headers.set('Cache-Control', 'no-store');
   if (origin && isAllowedOrigin(origin)) {
     headers.set('Access-Control-Allow-Origin', origin);
     headers.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
