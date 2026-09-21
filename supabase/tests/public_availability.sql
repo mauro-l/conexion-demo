@@ -53,6 +53,62 @@ language sql immutable as $$
   from jsonb_array_elements(p_json->'days') d
 $$;
 
+-- 1b. Lead-time construction helpers.
+--
+--     The fixture window (section 2) must be exact-to-the-hour so the 30-minute
+--     slot grid stays anchored on :00/:30, and it must never wrap past local
+--     midnight in either direction. `hora_apertura`/`hora_cierre` are `time`
+--     columns: the cast drops the date, so `date_trunc('hour', now) + 6h` at
+--     19:00 becomes 01:00 (behind a 15:00 open) and `date_trunc('hour', now)
+--     - 3h` at 02:00 becomes 23:00 (ahead of an 08:00 close). Both cases leave
+--     a close earlier than the open, so today has no valid window at all.
+--     These helpers clamp the open to 00:00 and the close to 24:00, which makes
+--     the wrap impossible while keeping both boundaries on exact hours.
+--
+--     Section 6b evaluates the same two helpers against every synthetic clock of
+--     the local day, so the fixture and its whole-day proof cannot drift apart.
+create function pg_temp.lead_open(p_now timestamp) returns time
+language sql immutable as $$
+  select case
+    when date_trunc('hour', p_now) - interval '3 hours' < date_trunc('day', p_now)
+      then time '00:00'
+      else (date_trunc('hour', p_now) - interval '3 hours')::time
+  end
+$$;
+
+create function pg_temp.lead_close(p_now timestamp) returns time
+language sql immutable as $$
+  select case
+    when date_trunc('hour', p_now) + interval '6 hours'
+         >= date_trunc('day', p_now) + interval '1 day'
+      then time '24:00'
+      else (date_trunc('hour', p_now) + interval '6 hours')::time
+  end
+$$;
+
+-- First 30-minute grid step at or after `p_now + 30 minutes`, computed from the
+-- grid anchor (the shop open time) the same way the RPC anchors its grid.
+create function pg_temp.lead_first(p_now timestamp, p_open time) returns timestamp
+language sql immutable as $$
+  select date_trunc('day', p_now) + p_open
+       + ceil(
+           extract(epoch from ((p_now + interval '30 minutes')
+                               - (date_trunc('day', p_now) + p_open)))
+           / 1800
+         ) * interval '30 minutes'
+$$;
+
+-- Last start today can hold: the window close minus the service duration.
+create function pg_temp.lead_last_start(
+  p_now timestamp,
+  p_close time,
+  p_duration_minutes int
+) returns timestamp
+language sql immutable as $$
+  select date_trunc('day', p_now) + p_close
+       - (p_duration_minutes * interval '1 minute')
+$$;
+
 -- 2. Clock anchors, then fixtures.
 select (clock_timestamp() at time zone 'America/Argentina/Buenos_Aires')::date as today,
        (clock_timestamp() at time zone 'America/Argentina/Buenos_Aires')::date + 7 as target,
@@ -60,21 +116,25 @@ select (clock_timestamp() at time zone 'America/Argentina/Buenos_Aires')::date a
        (clock_timestamp() at time zone 'America/Argentina/Buenos_Aires') as now_ba,
        clock_timestamp() at time zone 'America/Argentina/Buenos_Aires' as now_ts,
        -- Deterministic lead-time window, derived from the database clock rather
-       -- than pinned to 10:00. Both boundaries are floored to exact hours, so
+       -- than pinned to 10:00. Both boundaries are clamped to the local day and
+       -- floored to exact hours (pg_temp.lead_open/lead_close, section 1b), so
        -- the 30-minute slot grid is anchored on :00 and its first step at or
-       -- after `now + 30min` is a stable function of the clock. That flooring is
-       -- what removes a sub-second race: if the grid were anchored on the raw
-       -- clock second, a step landing exactly on now+30 could be included or
-       -- excluded depending on whether the RPC's `clock_timestamp()` read a few
-       -- microseconds later than this one. The window opens 3-4 hours before
-       -- `now` and closes 6-7 hours after it, so today always yields candidate
-       -- slots and the lead-time predicate is always exercised. The close time
-       -- can cross local midnight (Buenos Aires is UTC-3) when the suite runs
-       -- late; those post-midnight starts carry tomorrow's date inside the
-       -- still-open 14-day window and are simply ordinary slots, so no
-       -- construction can spill past the window's exclusive end.
-       (date_trunc('hour', clock_timestamp() at time zone 'America/Argentina/Buenos_Aires') - interval '3 hours') as lt_open,
-       (date_trunc('hour', clock_timestamp() at time zone 'America/Argentina/Buenos_Aires') + interval '6 hours') as lt_close,
+       -- after `now + 30min` is a stable function of the clock. That flooring
+       -- removes a sub-second race: if the grid were anchored on the raw clock
+       -- second, a step landing exactly on now+30 could be included or excluded
+       -- depending on whether the RPC's `clock_timestamp()` read a few
+       -- microseconds later than this one. The window opens three hours before
+       -- `now` (never before today 00:00) and closes six hours after it (never
+       -- after today 24:00), so the close can never wrap behind the open and
+       -- today always yields candidate slots. The one clock where the lead-time
+       -- predicate itself is unobservable is the final window before local
+       -- midnight: for a 30-minute service whose close is clamped to 24:00, the
+       -- last start today can hold is 23:30, so once `now + 30min` passes 23:30
+       -- no today start can satisfy the rule. Section 6 classifies that window
+       -- as an explicit skip, and section 6b proves the construction over every
+       -- hour of the local day.
+       pg_temp.lead_open(clock_timestamp() at time zone 'America/Argentina/Buenos_Aires') as lt_open,
+       pg_temp.lead_close(clock_timestamp() at time zone 'America/Argentina/Buenos_Aires') as lt_close,
        (select count(*) from public."Turno") as turnos0,
        (select count(*) from public."Cliente") as clientes0
 \gset
@@ -123,7 +183,7 @@ insert into public."Cliente" (nombre, telefono, barberia_id)
 values ('PgTAP Client', 1155550000, :f_shop)
 returning id as f_client \gset
 
-select plan(73);
+select plan(79);
 
 -- 3. Valid read: window, day numbering, ID-free DTO, computable slot grid.
 select pg_temp.avail('pgtap-availability', :'f_tok30') as a30 \gset
@@ -207,9 +267,11 @@ update public."Barbero" set hora_cierre = '20:00' where id = :f_barber;
 -- 6. Lead time: today never offers a start before now+30 minutes, and the
 --    first today start sits exactly on the first 30-minute grid step at or
 --    after now+30. The shop is opened before `now` (section 2) so today always
---    has candidate slots, and the assertion is deliberately *not* guarded: a
---    construction that produced no eligible today slots would fail the
---    `first_today_active` check below instead of passing vacuously.
+--    has candidate slots, and the lead-time assertions below are deliberately
+--    *not* guarded: a construction that produced no eligible today slots fails
+--    the non-vacuity guard loudly. The single exception is the documented final
+--    window before local midnight (section 6b), where no eligible today start
+--    can exist at all and the case is reported as an explicit `skip`.
 update public."Barberia" set hora_apertura = :'lt_open', hora_cierre = :'lt_close' where id = :f_shop;
 update public."Barbero"  set hora_apertura = :'lt_open', hora_cierre = :'lt_close' where id = :f_barber;
 
@@ -217,6 +279,32 @@ select count(*) as lt_today_slots
 from jsonb_array_elements(pg_temp.slots_on(pg_temp.avail('pgtap-availability', :'f_tok30'), :'today'::date)) s
 \gset
 
+select coalesce(min(s->>'start'), '') as first_today
+from jsonb_array_elements(pg_temp.slots_on(pg_temp.avail('pgtap-availability', :'f_tok30'), :'today'::date)) s
+\gset
+
+-- The expected first step and the last start today can hold are computed from the
+-- same anchor the fixture uses (`lt_open`, section 2). With `open < now`, the first
+-- step at or after now+30 is always at least one step past the anchor, so `ceil`
+-- cannot return a step that precedes now+30.
+select pg_temp.lead_first(:'now_ts'::timestamp, :'lt_open'::time) as lt_expected_first,
+       pg_temp.lead_last_start(:'now_ts'::timestamp, :'lt_close'::time, 30) as lt_last_start
+\gset
+
+-- Unprovable-window classifier. With the close clamped to 24:00 and a 30-minute
+-- service, the last today start is 23:30; once `now + 30min` is past that start
+-- there is no today candidate at all, so neither the rule nor its violation can be
+-- observed at this clock. The first conjunct is the important one: a derivation whose
+-- close is not after its open is a *broken construction*, not an unprovable clock, so
+-- it falls through to the loud non-vacuity guard instead of skipping. Outside this
+-- documented window the guard still fires, and section 6b proves the classification
+-- across all 48 synthetic clocks of the local day.
+select (:'lt_close'::time > :'lt_open'::time
+        and :'lt_expected_first'::timestamp > :'lt_last_start'::timestamp) as lt_unprovable \gset
+
+\if :lt_unprovable
+select skip('lead time: unprovable in the final window before local midnight (clamped close 24:00 minus the 30-minute service leaves 23:30 as the last today start, so now+30 no longer fits inside today); the non-vacuity guard stays armed for every other clock', 3);
+\else
 -- Guard: the construction must yield at least one today slot. If it does not,
 -- a later assertion could pass without exercising the predicate; this check
 -- makes that outcome a hard failure instead.
@@ -228,33 +316,71 @@ select is((select count(*) from jsonb_array_elements(pg_temp.slots_on(pg_temp.av
            where (s->>'start')::timestamp < :'now_ts'::timestamp + interval '30 minutes')::int, 0,
           'lead time: no today slot starts before now+30 minutes');
 
-select coalesce(min(s->>'start'), '') as first_today
-from jsonb_array_elements(pg_temp.slots_on(pg_temp.avail('pgtap-availability', :'f_tok30'), :'today'::date)) s
-\gset
-
--- The grid is anchored at the shop open time, which is exact-to-the-hour and
--- therefore already a 30-minute step. With `open < now`, the first step at or
--- after now+30 is always at least one step past the anchor, so `ceil` cannot
--- return a step that precedes now+30.
-select (:'lt_open'::timestamp
-        + ceil(
-            extract(epoch from ((:'now_ts'::timestamp + interval '30 minutes') - :'lt_open'::timestamp))
-            / 1800
-          ) * interval '30 minutes') as lt_expected_first
-\gset
-
 select is(
   :'first_today',
   to_char(:'lt_expected_first'::timestamp, 'YYYY-MM-DD"T"HH24:MI:SS'),
   'lead time: the earliest today slot is the first grid step at or after now+30 minutes');
+\endif
 
 -- The predicate still applies after the shop closes: a clock-derived window
 -- whose open time is today but whose candidates all fall before now must yield
--- no today slots. This is the complement of the non-vacuity guard above.
+-- no today slots. This is the complement of the non-vacuity guard above and holds
+-- at every clock, including the skipped pre-midnight window.
 update public."Barberia" set hora_apertura = '00:00', hora_cierre = '00:30' where id = :f_shop;
 select is(pg_temp.slot_count(pg_temp.avail('pgtap-availability', :'f_tok30'), :'today'::date), 0,
           'lead time: a window entirely before now yields no today slots');
 update public."Barberia" set hora_apertura = :'lt_open', hora_cierre = :'lt_close' where id = :f_shop;
+
+-- 6b. Whole-day construction sweep (hour-independent proof).
+--
+--     The defect this guards against: the fixture window used to be
+--     `date_trunc('hour', now) - 3h` .. `+ 6h`, moved verbatim into `time` columns.
+--     Both ends cross local midnight for part of the day and the `time` cast drops
+--     the date, so the close could land *before* the open (at 19:00: open 16:00,
+--     close 01:00) or the open *after* the close (at 02:00: open 23:00, close
+--     08:00). Today then had zero candidates: the suite failed loudly under the
+--     non-vacuity guard, but before that guard existed it passed vacuously, and a
+--     single-hour verification could not see it either way. This block evaluates
+--     the same construction helpers against 48 synthetic local clocks - every hour
+--     of the day at :00 and :30 - and asserts the derived window never wraps and
+--     always leaves an eligible today start, with the documented final window
+--     before midnight classified as a skip.
+create temp table lt_sweep as
+select syn.ts,
+       pg_temp.lead_open(syn.ts)  as open_t,
+       pg_temp.lead_close(syn.ts) as close_t,
+       pg_temp.lead_first(syn.ts, pg_temp.lead_open(syn.ts)) as expected_first,
+       pg_temp.lead_last_start(syn.ts, pg_temp.lead_close(syn.ts), 30) as last_start
+from (
+  select date_trunc('day', :'now_ts'::timestamp)
+         + make_interval(hours => h, mins => m) as ts
+  from generate_series(0, 23) as h
+  cross join (values (0), (30)) as off(m)
+) syn;
+
+alter table lt_sweep add column anchor timestamp;
+alter table lt_sweep add column has_eligible boolean;
+update lt_sweep
+   set anchor = date_trunc('day', ts) + open_t,
+       has_eligible = expected_first >= ts + interval '30 minutes'
+                      and expected_first <= last_start
+                      and expected_first::date = ts::date;
+
+select is((select count(*) from lt_sweep)::int, 48,
+          'construction sweep: 48 synthetic local clocks evaluated (24 hours x :00 and :30)');
+select is((select count(*) from lt_sweep where close_t <= open_t)::int, 0,
+          'construction sweep: the derived close is never earlier than the derived open');
+select is((select count(*) from lt_sweep
+           where extract(minute from anchor) <> 0
+              or extract(second from anchor) <> 0)::int, 0,
+          'construction sweep: the grid anchor stays on the exact hour at every clock');
+select is((select count(*) from lt_sweep
+           where not has_eligible and ts::time <= time '23:00')::int, 0,
+          'construction sweep: every clock outside the final window before midnight leaves an eligible today start');
+select is((select has_eligible from lt_sweep where ts::time = time '23:00'), true,
+          'construction sweep: the 23:00 clock still leaves an eligible today start');
+select is((select has_eligible from lt_sweep where ts::time = time '23:30'), false,
+          'construction sweep: the 23:30 clock is the documented unprovable case');
 
 -- 7. NULL schedule fields contribute no slots and never fall back to shop hours.
 select pg_temp.avail('pgtap-availability', :'f_toknull') as anull \gset

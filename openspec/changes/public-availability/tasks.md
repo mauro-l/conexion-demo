@@ -58,4 +58,10 @@ Order: 1→2→3→4→5; task 2.1 parallels 4.1.
 - [x] 5.1 Lock: (a) `v` dropped, (b) NULL duration → `200` empty `days`, (c) `Barberia` NULL → no slots, (d) `searchParams` finding [all specs]
 - [x] 5.2 Deferred log: occupied/blocked/NULL-schedule/10:00 cases need fixtures [availability-read]
 
+## Phase 6: Harness correction (post-verify)
+
+- [x] 6.1 Make the lead-time fixture window wrap-proof: clamp `pg_temp.lead_open` to `00:00` and `pg_temp.lead_close` to `24:00`, derive the expected first grid step from the same anchor the fixture uses, and classify the final window before local midnight as an explicit `skip` while keeping the non-vacuity guard armed for every other clock [availability-read: boundary]
+- [x] 6.2 Add the whole-day construction sweep (section 6b): 48 synthetic local clocks assert no wrap, an exact-hour anchor, an eligible today start outside the documented window, and the `23:30` skip classification [availability-read: boundary]
+- [x] 6.3 Update `deferred-coverage.md` D1 to record what is proven across the whole day and what remains genuinely unprovable [availability-read]
+
 RED tests: none — matrix all `N/A`.

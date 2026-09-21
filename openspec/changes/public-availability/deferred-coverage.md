@@ -1,7 +1,7 @@
 # Deferred Coverage Log — public-availability
 
 This change is backed by four suites: Vitest (`npm test`), pgTAP against the local
-database (`npm run test:db`, 73 assertions), real-HTTP Edge checks (`npm run
+database (`npm run test:db`, 79 assertions), real-HTTP Edge checks (`npm run
 test:edge`, 28 checks) and Playwright against a production build (`npm run
 test:e2e`, 12 tests). This log lists the cases those suites do **not** prove, so a
 maintainer can tell what is guaranteed from what is only assumed.
@@ -24,31 +24,47 @@ today, and what would move it to covered.
 **Case.** Spec scenario "Boundary and lead time": local time is 10:00 and the earliest
 eligible start is 10:30.
 
-**Status: closed (non-vacuous, clock-derived).** The RPC still reads
-`clock_timestamp()` with no injectable seam
+**Status: closed (non-vacuous, clock-derived, proven across the whole day).** The RPC
+still reads `clock_timestamp()` with no injectable seam
 (`supabase/migrations/phase12_public_availability.sql:77`) and was deliberately not
 changed. Instead the harness owns its fixtures and derives today's shop/barber window
-from the database clock: `hora_apertura` is floored to the previous exact hour minus
-three, and `hora_cierre` to the exact hour plus six
-(`supabase/tests/public_availability.sql`, section 2), so today always has candidate
-slots. The section-6 assertions then prove (a) at least one eligible today slot exists
-(a hard failure, never a skip, if it does not), (b) no today slot starts before
-`now + 30 minutes`, (c) the earliest today slot is exactly the first 30-minute grid step
-at or after `now + 30 minutes`, and (d) a window placed entirely before `now` yields no
+from the database clock through two helpers
+(`supabase/tests/public_availability.sql`, section 1b): the open is
+`date_trunc('hour', now) - 3h` clamped so it never precedes local midnight, and the close
+is `date_trunc('hour', now) + 6h` clamped so it never passes it. Both boundaries stay on
+exact hours, so the 30-minute grid stays anchored on `:00`/`:30`, and the clamp makes it
+impossible for the close to land before the open. The section-6 assertions then prove
+(a) at least one eligible today slot exists (a hard failure, never a skip, if it does
+not), (b) no today slot starts before `now + 30 minutes`, (c) the earliest today slot is
+exactly the first 30-minute grid step at or after `now + 30 minutes`, computed from the
+same anchor the fixture uses, and (d) a window placed entirely before `now` yields no
 today slots, which is the complement showing the predicate still applies.
 
-**Boundaries handled.** The window boundaries are floored to exact hours precisely so
-the grid is anchored on `:00`/`:30` and the expected first step does not depend on
-sub-second timing between the harness clock read and the RPC's own
-`clock_timestamp()`. A close time that crosses local midnight (Buenos Aires is UTC-3)
-is harmless: the post-midnight starts carry tomorrow's date, still inside the 14-day
-window, and the exclusive window end is unchanged. The construction cannot spill past
-`today + 14` because the close time is at most seven hours ahead.
+**Whole-day proof.** Section 6b evaluates the same two derivation helpers against **48
+synthetic local clocks** — every hour of the day at `:00` and `:30` — and asserts that
+the derived close is never earlier than the derived open, that the grid anchor stays on
+the exact hour at every clock, and that every clock outside the documented final window
+leaves at least one eligible today start. This is the deterministic, hour-independent
+check a single-hour run cannot provide, and it is what caught the wrap defect the earlier
+`-3h`/`+6h` form hid: with the un-clamped close, clocks from 18:00 onward produce a
+00:00 close behind a 15:00 open, and the sweep fails.
+
+**The one genuinely unprovable window.** For a 30-minute service whose close is clamped
+to `24:00`, the last start today can hold is `23:30`; once `now + 30min` is past that
+start, no today start can satisfy the rule, so neither the predicate nor a violation of
+it can be observed. Section 6 classifies this window (real clocks after `23:00`) as an
+explicit `skip` carrying its reason text, and section 6b shows the same classification
+for the synthetic `23:30` clock. A broken construction cannot hide behind that skip: the
+classifier only fires when the derived close is after the derived open, so a wrapped
+window falls through to the loud non-vacuity guard (verified by restoring the un-clamped
+`+6 hours` form — the suite fails in section 6 *and* in the sweep).
 
 **Residue.** A literal "local time is exactly 10:00" fixture is still not expressible
 without a clock seam, and the spec's 10:00 wording remains an illustration of the rule
-rather than a pinned input; the rule itself (`start >= now + 30 minutes`, on the grid)
-is now executed-proven non-vacuously at whatever wall-clock time the suite runs.
+rather than a pinned input. The rule itself (`start >= now + 30 minutes`, on the grid)
+is now executed-proven non-vacuously at every wall-clock time the construction can
+produce, with the pre-midnight window reported as an explicit skip rather than a silent
+pass.
 
 ### D2 — Occupied / blocked / NULL-schedule on published live data
 
