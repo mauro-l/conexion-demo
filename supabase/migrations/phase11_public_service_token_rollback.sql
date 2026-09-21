@@ -1,27 +1,20 @@
--- Rollback: phase11_public_availability
--- Reverses phase11_public_availability.sql.
--- Drops only the artifacts phase11 created: public_availability(text, text), the
--- unique index idx_servicio_public_service_token, the
--- Servicio.public_service_token column, and the BloqueoHorario CHECK
--- bloqueohorario_horas_completas.
--- Restores the function phase11 replaced: public_catalog returns to its
--- pre-phase11 four-field definition. The drop-instead-of-restore convention from
--- phase9/phase10 applies to functions those migrations created; phase11 only
--- replaced public_catalog, and the public-catalog Edge Function calls
--- sb.rpc('public_catalog'), so dropping it would break the public catalog.
+-- Rollback: phase11_public_service_token
+-- Reverses phase11_public_service_token.sql only. Drops the unique index
+-- idx_servicio_public_service_token and the Servicio.public_service_token
+-- column, then restores the function this phase replaced: public_catalog returns
+-- to its pre-phase11 four-field definition. The public-catalog Edge Function
+-- calls sb.rpc('public_catalog'), so the function is restored, not dropped.
+-- Deliberately does NOT touch public_availability or the BloqueoHorario CHECK;
+-- those belong to phase12_public_availability_rollback.
+-- Rollback order is the reverse of apply order: phase12 first, then phase11.
 
 BEGIN;
 
--- 1. Remove what phase11 created.
-DROP FUNCTION IF EXISTS public.public_availability(text, text);
-
+-- 1. Remove what this phase created.
 DROP INDEX IF EXISTS public.idx_servicio_public_service_token;
 
 ALTER TABLE public."Servicio"
   DROP COLUMN IF EXISTS public_service_token;
-
-ALTER TABLE public."BloqueoHorario"
-  DROP CONSTRAINT IF EXISTS bloqueohorario_horas_completas;
 
 -- 2. Restore the pre-phase11 public_catalog (no publicServiceToken field).
 CREATE OR REPLACE FUNCTION public.public_catalog(p_slug text) RETURNS jsonb
