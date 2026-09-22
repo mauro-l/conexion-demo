@@ -74,6 +74,45 @@ test.describe('public landing at /', () => {
     await expect(page.locator('.ticket')).toHaveCount(catalog.body.services.length);
   });
 
+  test('renders the database shop name in a two-tone logo and no rating row', async ({ page }) => {
+    const slug = requiredEnv('BARBERSHOP_PUBLIC_SLUG');
+    const { body } = await fetchPublic<PublicContextBody>(`/functions/v1/public-context?slug=${slug}`);
+    const words = body.barberia.name.trim().split(/\s+/);
+    const tail = words[words.length - 1];
+    const head = words.slice(0, -1).join(' ');
+
+    await page.goto('/');
+
+    const logo = page.locator('.logo');
+    await expect(logo).toHaveText(body.barberia.name);
+
+    if (head) {
+      const tailSpan = logo.locator('span');
+      await expect(tailSpan).toHaveText(tail);
+      // The brass binding is proven against the live token, not a hard-coded hex,
+      // so a palette change cannot silently break the two-tone rule.
+      const usesBrass = await tailSpan.evaluate((element) => {
+        const brass = getComputedStyle(document.documentElement).getPropertyValue('--brass').trim();
+        const probe = document.createElement('span');
+        probe.style.color = brass;
+        element.parentElement?.appendChild(probe);
+        const expected = getComputedStyle(probe).color;
+        probe.remove();
+        return getComputedStyle(element).color === expected;
+      });
+      expect(usesBrass).toBe(true);
+    } else {
+      // A single-word name renders plain: no fabricated second half.
+      await expect(logo.locator('span')).toHaveCount(0);
+    }
+
+    // The prototype's rating row has no database source and must never render.
+    const html = await page.content();
+    expect(html).not.toContain('★');
+    expect(html).not.toContain('reseñas');
+    await expect(page.locator('.rating-row')).toHaveCount(0);
+  });
+
   test('renders only the information rows that have values', async ({ page }) => {
     const slug = requiredEnv('BARBERSHOP_PUBLIC_SLUG');
     const { body } = await fetchPublic<PublicContextBody>(`/functions/v1/public-context?slug=${slug}`);

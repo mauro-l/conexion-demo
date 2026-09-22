@@ -317,6 +317,11 @@ test.describe('public availability surface', () => {
     if (!openDay) throw new Error('the local scratch stack exposes at least one open day');
     await expect(dateCard(page, openDay)).toHaveAttribute('aria-pressed', 'true');
     await expect(page.locator('.availability-slots .time-group').first()).toBeVisible();
+
+    // The prototype's rating row has no database source and must never render here.
+    const html = await page.content();
+    expect(html).not.toContain('★');
+    expect(html).not.toContain('reseñas');
   });
 
   test('jumps to the selected date card without opening a date dialog', async ({ page }) => {

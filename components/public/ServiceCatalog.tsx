@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ServiceDisclosure } from '~/components/public/ServiceDisclosure';
 import { formatDuration, formatPrice } from '~/lib/public-format';
 import type { Service } from '~/types/public';
 
@@ -15,15 +16,9 @@ export function ServiceCatalog({ services }: { services: Service[] }) {
       <div className="ticket-list">
         {services.map((service) => (
           <article className="ticket" key={service.publicServiceToken}>
-            <div className="ticket-main">
+            <ServiceDisclosure description={service.description}>
               <h3 className="ticket-name">{service.name}</h3>
-              {service.description ? (
-                <details className="ticket-details">
-                  <summary>Qué incluye</summary>
-                  <p>{service.description}</p>
-                </details>
-              ) : null}
-            </div>
+            </ServiceDisclosure>
             <div className="ticket-perf" />
             <div className="ticket-footer">
               <span className="ticket-meta">

@@ -41,10 +41,10 @@ No slice needs a migration/contract unwind.
 
 ## Slice 3 — Tokens + copy (needs S2; cosmetic-only)
 
-- [ ] 3.1 `app/globals.css`: `--fill-strong` both themes (light ink, dark `#0E0E0F`), theme-correct shadow rgba, per-element spacing, drop `--heading-letter-spacing`; slot 14.5px/600 mono r12, label 12px/600 uppercase muted, pill 26px avatar r999. Req: theme-switch + fidelity + booking-fidelity. Verify: `typecheck` + `build`; exact rgba/spacing are screenshots, not tests.
-- [ ] 3.2 `components/public/PublicHeader.tsx` + create `components/public/PublicHeader.test.tsx`: `splitLogoName` (last word `var(--brass)`; single word plain: `Conexión`/`Barbería`); avatar uses `var(--fill-strong)`. Req: fidelity + theme-switch. Verify: `npm test`.
-- [ ] 3.3 `components/public/PublicInfo.tsx` (`Hoy ` prefix; accept `Hoy 10:00–20:00`) + create `components/public/ServiceDisclosure.tsx` (button, `aria-expanded`/`aria-controls`, 180° chevron) in `components/public/ServiceCatalog.tsx`; `app/page.tsx` DB values only. Req: db-copy + disclosure. Verify: `npm test` + `npm run test:e2e`.
-- [ ] 3.4 `components/public/ServiceCatalog.test.tsx` + `components/public/PublicInfo.test.tsx`; negative: `★★★★★ · 5.0 · 37 reseñas` nowhere, no rating column/DTO field (non-goal). Req: no-rating. Verify: `npm test` + literal sweep (`Elegí una fecha`, `Elegí un horario`, `Ir a una fecha específica`, `Cualquier profesional`, `Volver`, `Cerrar`, `Elegir otro horario`, `Hoy `).
+- [x] 3.1 `app/globals.css`: `--fill-strong` both themes (light ink, dark `#0E0E0F`), theme-correct shadow rgba, per-element spacing, drop `--heading-letter-spacing`; slot 14.5px/600 mono r12, label 12px/600 uppercase muted, pill 26px avatar r999. Req: theme-switch + fidelity + booking-fidelity. Verify: `typecheck` + `build`; exact rgba/spacing are screenshots, not tests.
+- [x] 3.2 `components/public/PublicHeader.tsx` + create `components/public/PublicHeader.test.tsx`: `splitLogoName` (last word `var(--brass)`; single word plain: `Conexión`/`Barbería`); avatar uses `var(--fill-strong)`. Req: fidelity + theme-switch. Verify: `npm test`.
+- [x] 3.3 `components/public/PublicInfo.tsx` (`Hoy ` prefix; accept `Hoy 10:00–20:00`) + create `components/public/ServiceDisclosure.tsx` (button, `aria-expanded`/`aria-controls`, 180° chevron) in `components/public/ServiceCatalog.tsx`; `app/page.tsx` DB values only. Req: db-copy + disclosure. Verify: `npm test` + `npm run test:e2e`.
+- [x] 3.4 `components/public/ServiceCatalog.test.tsx` + `components/public/PublicInfo.test.tsx`; negative: `★★★★★ · 5.0 · 37 reseñas` nowhere, no rating column/DTO field (non-goal). Req: no-rating. Verify: `npm test` + literal sweep (`Elegí una fecha`, `Elegí un horario`, `Ir a una fecha específica`, `Cualquier profesional`, `Volver`, `Cerrar`, `Elegir otro horario`, `Hoy `).
 
 ## Requirement → task map (9/9)
 
