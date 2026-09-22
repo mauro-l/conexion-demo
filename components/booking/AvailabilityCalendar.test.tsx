@@ -20,15 +20,115 @@ const emptyDays: AvailabilityDay[] = [
   { date: '2026-09-22', day: 2, slots: [] },
 ];
 
+/**
+ * The closed-leading-day window from the spec: 14 returned days, the first with
+ * zero slots, the third open, and a later day (`day 3`) also open so selecting it
+ * replaces both the selection and the rendered slots.
+ */
+const windowWithClosedLeadingDay: AvailabilityDay[] = [
+  { date: '2026-09-06', day: 0, slots: [] },
+  { date: '2026-09-07', day: 1, slots: [] },
+  {
+    date: '2026-09-08',
+    day: 2,
+    slots: [
+      { start: '2026-09-08T09:00', end: '2026-09-08T09:40', availabilityToken: 'tok.day2.sig' },
+    ],
+  },
+  {
+    date: '2026-09-09',
+    day: 3,
+    slots: [
+      { start: '2026-09-09T11:00', end: '2026-09-09T11:40', availabilityToken: 'tok.day3.sig' },
+      { start: '2026-09-09T15:30', end: '2026-09-09T16:10', availabilityToken: 'tok.day3b.sig' },
+    ],
+  },
+  ...Array.from({ length: 10 }, (_, index) => ({
+    date: `2026-09-${String(10 + index).padStart(2, '0')}`,
+    day: ((index + 4) % 7) as number,
+    slots: [],
+  })),
+];
+
 describe('AvailabilityCalendar', () => {
-  it('renders every day, formats the weekday in Buenos Aires local time, and marks empty days', () => {
+  it('renders one date card per returned day with DTO-derived weekday, day and month labels', () => {
+    render(<AvailabilityCalendar days={windowWithClosedLeadingDay} />);
+
+    // 14 returned days must produce 14 cards (never assume a fixed window size).
+    expect(screen.getAllByRole('button', { name: /^[a-záéíóú]{3} \d{1,2} [a-z]{3}$/ })).toHaveLength(
+      14
+    );
+
+    const first = screen.getByTestId('date-card-2026-09-06');
+    expect(first).toHaveTextContent('dom');
+    expect(first).toHaveTextContent('6');
+    expect(first).toHaveTextContent('sep');
+
+    const third = screen.getByTestId('date-card-2026-09-08');
+    expect(third).toHaveTextContent('mar');
+    expect(third).toHaveTextContent('8');
+    expect(third).toHaveTextContent('sep');
+  });
+
+  it('precedes the scroller with the literal Elegí una fecha label', () => {
     render(<AvailabilityCalendar days={twoDays} />);
 
-    expect(screen.getByRole('heading', { name: 'Lunes 21/9' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: 'Martes 22/9' })).toBeInTheDocument();
-    expect(screen.getByText('Sin horarios')).toBeInTheDocument();
+    expect(screen.getByText('Elegí una fecha')).toBeInTheDocument();
+  });
+
+  it('disables exactly the days with zero slots and leaves open days enabled', () => {
+    render(<AvailabilityCalendar days={windowWithClosedLeadingDay} />);
+
+    expect(screen.getByTestId('date-card-2026-09-06')).toBeDisabled();
+    expect(screen.getByTestId('date-card-2026-09-07')).toBeDisabled();
+    expect(screen.getByTestId('date-card-2026-09-08')).not.toBeDisabled();
+    expect(screen.getByTestId('date-card-2026-09-09')).not.toBeDisabled();
+  });
+
+  it('selects the first open day when the window starts with a closed day', () => {
+    render(<AvailabilityCalendar days={windowWithClosedLeadingDay} />);
+
+    expect(screen.getByTestId('date-card-2026-09-06')).not.toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(screen.getByTestId('date-card-2026-09-08')).toHaveAttribute('aria-pressed', 'true');
+    // Exactly one card is selected.
+    expect(screen.getAllByRole('button', { pressed: true })).toHaveLength(1);
+    // The rendered slots belong to the selected (third) day.
     expect(screen.getByRole('button', { name: '09:00' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '09:30' })).toBeInTheDocument();
+  });
+
+  it('activates another open card and replaces both the selection and the rendered slots', () => {
+    render(<AvailabilityCalendar days={windowWithClosedLeadingDay} />);
+
+    // Default selection is the third day (index 2); switch to the fourth (index 3).
+    expect(screen.getByRole('button', { name: '09:00' })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('date-card-2026-09-09'));
+
+    expect(screen.getByTestId('date-card-2026-09-09')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByTestId('date-card-2026-09-08')).not.toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(screen.getAllByRole('button', { pressed: true })).toHaveLength(1);
+    // The time content changed to day 3's slots.
+    expect(screen.getByRole('button', { name: '11:00' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '15:30' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '09:00' })).toBeNull();
+  });
+
+  it('does not select a disabled card when it is activated', () => {
+    render(<AvailabilityCalendar days={windowWithClosedLeadingDay} />);
+
+    fireEvent.click(screen.getByTestId('date-card-2026-09-06'));
+
+    expect(screen.getByTestId('date-card-2026-09-06')).not.toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(screen.getByTestId('date-card-2026-09-08')).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('shows the empty-calendar success state when no day has slots', () => {
@@ -53,7 +153,9 @@ describe('AvailabilityCalendar', () => {
     fireEvent.click(screen.getByRole('button', { name: '09:30' }));
 
     expect(screen.getByRole('status')).toHaveTextContent('Elegiste el Lunes 21/9 a las 09:30.');
-    expect(screen.getByText('La reserva se completa en una próxima etapa: todavía no se reservó nada.')).toBeInTheDocument();
+    expect(
+      screen.getByText('La reserva se completa en una próxima etapa: todavía no se reservó nada.')
+    ).toBeInTheDocument();
   });
 
   it('reaching the final state performs no fetch and no booking mutation', () => {

@@ -60,10 +60,15 @@ function availability(service: string): Promise<AvailabilityBody> {
 
 const WEEKDAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-/** Same text the island renders for a day, so the test can target its section. */
+/** Same text the island renders for the final summary, so the test can target a day. */
 function dayTitle(day: AvailabilityDay): string {
   const [, month, dayOfMonth] = day.date.split('-');
   return `${WEEKDAYS[day.day]} ${Number(dayOfMonth)}/${Number(month)}`;
+}
+
+/** The date card for a returned day, addressed by its DTO date string. */
+function dateCard(page: Page, day: AvailabilityDay) {
+  return page.getByTestId(`date-card-${day.date}`);
 }
 
 /** Every request that is not a safe read would be a booking-flow mutation. */
@@ -184,7 +189,7 @@ test.describe('public availability surface', () => {
     // "availabilityToken is present" assertion below reports a backend hiccup
     // as a privacy leak. A privacy test must fail as "backend down" instead.
     await expect(page.locator('h1.hero-title')).toHaveText(service.name);
-    await expect(page.locator('.availability-day, .availability-empty').first()).toBeVisible();
+    await expect(page.locator('.date-scroller, .availability-empty').first()).toBeVisible();
 
     const html = await page.content();
     expect(html).not.toContain(requiredEnv('BARBERSHOP_PUBLIC_SLUG'));
@@ -231,10 +236,13 @@ test.describe('public availability surface', () => {
     await expect(page.locator('h1.hero-title')).toHaveText(before.service.name);
     await expect(page.locator('.prof-select-value')).toHaveText('Cualquier profesional');
 
-    const day = page.locator('.availability-day').filter({ hasText: dayTitle(target) });
-    await day.locator('.availability-slot').first().click();
+    const day = dateCard(page, target);
+    await day.click();
+    await expect(day).toHaveAttribute('aria-pressed', 'true');
+    await page.locator('.availability-slots .availability-slot').first().click();
 
     const final = page.locator('.availability-final');
+    await expect(final).toContainText(dayTitle(target));
     await expect(final).toContainText('todavía no se reservó nada');
     await expect(final).toContainText('próxima etapa');
 
