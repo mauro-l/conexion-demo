@@ -1,17 +1,6 @@
 import Link from 'next/link';
+import { formatDuration, formatPrice } from '~/lib/public-format';
 import type { Service } from '~/types/public';
-
-function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  const remainder = minutes % 60;
-  if (remainder === 0) return `${hours} h`;
-  return `${hours} h ${remainder} min`;
-}
-
-function formatPrice(price: number): string {
-  return `$${price.toLocaleString('es-AR')}`;
-}
 
 /**
  * Database-authoritative service catalog. Descriptions are rendered only when

@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
-import { AvailabilityCalendar } from '~/components/booking/AvailabilityCalendar';
-import type { AvailabilityDay } from '~/types/booking';
+import { AvailabilityCalendar, bucketSlots } from '~/components/booking/AvailabilityCalendar';
+import type { AvailabilityDay, AvailabilitySlot } from '~/types/booking';
 
 const twoDays: AvailabilityDay[] = [
   {
@@ -48,6 +48,30 @@ const windowWithClosedLeadingDay: AvailabilityDay[] = [
     day: ((index + 4) % 7) as number,
     slots: [],
   })),
+];
+
+/**
+ * The spec's boundary slots: each one sits exactly on a bucket edge so a wrong
+ * comparison operator (`<=` instead of `<`) would land it in the wrong group.
+ */
+const boundarySlots: AvailabilitySlot[] = [
+  { start: '2026-09-21T11:59', end: '2026-09-21T12:39', availabilityToken: 'tok.am.sig' },
+  { start: '2026-09-21T12:00', end: '2026-09-21T12:40', availabilityToken: 'tok.noon.sig' },
+  { start: '2026-09-21T17:59', end: '2026-09-21T18:39', availabilityToken: 'tok.pm.sig' },
+  { start: '2026-09-21T18:00', end: '2026-09-21T18:40', availabilityToken: 'tok.night.sig' },
+];
+
+const boundaryDay: AvailabilityDay[] = [{ date: '2026-09-21', day: 1, slots: boundarySlots }];
+
+/** A day with slots in one bucket only, to prove the other headings are omitted. */
+const morningOnlyDay: AvailabilityDay[] = [
+  {
+    date: '2026-09-21',
+    day: 1,
+    slots: [
+      { start: '2026-09-21T09:00', end: '2026-09-21T09:40', availabilityToken: 'tok.solo.sig' },
+    ],
+  },
 ];
 
 describe('AvailabilityCalendar', () => {
@@ -194,5 +218,50 @@ describe('AvailabilityCalendar', () => {
     expect(html).not.toContain('tok.one.sig');
     expect(html).not.toContain('tok.two.sig');
     expect(html).not.toContain('publicServiceToken');
+  });
+
+  it('places the 11:59/12:00/17:59/18:00 boundary slots in Mañana, Tarde, Tarde and Noche', () => {
+    const groups = bucketSlots(boundarySlots);
+
+    expect(groups.Mañana.map((slot) => slot.start)).toEqual(['2026-09-21T11:59']);
+    expect(groups.Tarde.map((slot) => slot.start)).toEqual([
+      '2026-09-21T12:00',
+      '2026-09-21T17:59',
+    ]);
+    expect(groups.Noche.map((slot) => slot.start)).toEqual(['2026-09-21T18:00']);
+  });
+
+  it('buckets a bare HH:MM start string without constructing a Date', () => {
+    const groups = bucketSlots([
+      { start: '09:00', end: '09:40', availabilityToken: 'tok.bare.sig' },
+      { start: '19:00', end: '19:40', availabilityToken: 'tok.bare.pm.sig' },
+    ]);
+
+    expect(groups.Mañana.map((slot) => slot.start)).toEqual(['09:00']);
+    expect(groups.Tarde).toHaveLength(0);
+    expect(groups.Noche.map((slot) => slot.start)).toEqual(['19:00']);
+  });
+
+  it('renders the selected day slots under Mañana, Tarde and Noche with the literal label above', () => {
+    render(<AvailabilityCalendar days={boundaryDay} />);
+
+    expect(screen.getByText('Elegí un horario', { exact: true })).toBeInTheDocument();
+    expect(screen.getAllByText(/^(Mañana|Tarde|Noche)$/).map((node) => node.textContent)).toEqual([
+      'Mañana',
+      'Tarde',
+      'Noche',
+    ]);
+    expect(screen.getByRole('button', { name: '11:59' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '12:00' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '17:59' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '18:00' })).toBeInTheDocument();
+  });
+
+  it('omits a group heading when that bucket has no slots', () => {
+    render(<AvailabilityCalendar days={morningOnlyDay} />);
+
+    expect(screen.getByText('Mañana')).toBeInTheDocument();
+    expect(screen.queryByText('Tarde')).toBeNull();
+    expect(screen.queryByText('Noche')).toBeNull();
   });
 });

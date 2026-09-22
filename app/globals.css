@@ -455,29 +455,128 @@ a {
   }
 }
 
-/* Booking entry: the single server-rendered "Cualquier profesional" affordance. */
-.prof-select {
+/* Booking modal chrome: back / crumb / close, replacing the home topbar here. */
+.modal-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin: 20px 0 0;
-  padding: 14px 16px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
+  padding: 16px 20px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line);
 }
 
-.prof-select-label {
-  font-size: 12px;
+.modal-topbar .icon-btn {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.topbar-crumb {
+  font-size: 14px;
   font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--brass-dark);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Service chip: database service name plus duration · price. */
+.service-chip {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin: 0 0 18px;
+  font-size: 13px;
+}
+
+.service-chip .name {
+  font-weight: 600;
+}
+
+.service-chip .meta {
+  font-family: var(--mono-font);
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.service-chip .dot {
+  margin: 0 6px;
+}
+
+/*
+ * Booking professional affordance: one static pill with a 26px avatar and a
+ * chevron, plus the calendar-jump control beside it.
+ */
+.prof-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 0 22px;
+}
+
+.prof-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 14px 6px 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.prof-avatar {
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--brand-mark-bg);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .prof-select-value {
   font-weight: 600;
+}
+
+.prof-chevron {
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.cal-jump-btn {
+  flex-shrink: 0;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.cal-jump-btn:hover {
+  border-color: var(--brass);
+}
+
+.cal-jump-btn:focus-visible,
+.icon-btn:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
 }
 
 /* Read-only availability island. */
@@ -563,6 +662,24 @@ a {
 }
 
 .availability-slots {
+  display: flex;
+  flex-direction: column;
+}
+
+/* One time-of-day group per non-empty bucket (Mañana / Tarde / Noche). */
+.time-group {
+  margin-bottom: 20px;
+}
+
+.time-group .group-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin: 0 0 8px;
+}
+
+.time-group-slots {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;

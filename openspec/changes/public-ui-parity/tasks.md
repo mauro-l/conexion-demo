@@ -34,10 +34,10 @@ No slice needs a migration/contract unwind.
 
 ## Slice 2 — Groups + chrome (needs S1; not S3)
 
-- [ ] 2.1 `components/booking/AvailabilityCalendar.tsx`: `bucketSlots` (`<12`/`<18`, parse before `T`, no `Date`), omit empty groups, literal `Elegí un horario`. Req: groups (11:59/12:00/17:59/18:00). Verify: `npm test`.
-- [ ] 2.2 `app/reservar/page.tsx`: `Volver`/`Cerrar` → `/`, shop crumb via cached `loadPublicPageData`, no `PublicHeader`. Req: structure. Verify: `npm run test:e2e`.
-- [ ] 2.3 Create `lib/public-format.ts`; chip (DB name + duration · price) in `app/reservar/page.tsx`; `Cualquier profesional` pill + `Ir a una fecha específica` scroll/focus (no dialog) in island; keep `Elegir otro horario`. Req: structure. Verify: `npm run test:e2e`.
-- [ ] 2.4 `components/booking/AvailabilityCalendar.test.tsx` + `tests/e2e/public-availability.spec.ts` + `app/globals.css`: omission, chip, pill, jump, read-only completion. Req: groups + structure. Verify: `npm test` + `npm run test:e2e`.
+- [x] 2.1 `components/booking/AvailabilityCalendar.tsx`: `bucketSlots` (`<12`/`<18`, parse before `T`, no `Date`), omit empty groups, literal `Elegí un horario`. Req: groups (11:59/12:00/17:59/18:00). Verify: `npm test`.
+- [x] 2.2 `app/reservar/page.tsx`: `Volver`/`Cerrar` → `/`, shop crumb via cached `loadPublicPageData`, no `PublicHeader`. Req: structure. Verify: `npm run test:e2e`.
+- [x] 2.3 Create `lib/public-format.ts`; chip (DB name + duration · price) in `app/reservar/page.tsx`; `Cualquier profesional` pill + `Ir a una fecha específica` scroll/focus (no dialog) in island; keep `Elegir otro horario`. Req: structure. Verify: `npm run test:e2e`.
+- [x] 2.4 `components/booking/AvailabilityCalendar.test.tsx` + `tests/e2e/public-availability.spec.ts` + `app/globals.css`: omission, chip, pill, jump, read-only completion. Req: groups + structure. Verify: `npm test` + `npm run test:e2e`.
 
 ## Slice 3 — Tokens + copy (needs S2; cosmetic-only)
 

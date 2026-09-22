@@ -34,6 +34,8 @@ type AvailabilityBody = {
   days: AvailabilityDay[];
 };
 
+type ContextBody = { barberia: { name: string } };
+
 const API_BASE = requiredEnv('SUPABASE_URL').replace(/\/$/, '');
 
 async function publicGet<T>(path: string): Promise<T> {
@@ -47,6 +49,13 @@ async function publicGet<T>(path: string): Promise<T> {
 function catalog(): Promise<CatalogBody> {
   return publicGet<CatalogBody>(
     `/functions/v1/public-catalog?slug=${encodeURIComponent(requiredEnv('BARBERSHOP_PUBLIC_SLUG'))}`
+  );
+}
+
+/** The public context read, for the database shop name shown in the modal crumb. */
+function context(): Promise<ContextBody> {
+  return publicGet<ContextBody>(
+    `/functions/v1/public-context?slug=${encodeURIComponent(requiredEnv('BARBERSHOP_PUBLIC_SLUG'))}`
   );
 }
 
@@ -239,6 +248,8 @@ test.describe('public availability surface', () => {
     const day = dateCard(page, target);
     await day.click();
     await expect(day).toHaveAttribute('aria-pressed', 'true');
+    // The selected day's slots render under at least one non-empty time group.
+    await expect(page.locator('.availability-slots .group-label').first()).toBeVisible();
     await page.locator('.availability-slots .availability-slot').first().click();
 
     const final = page.locator('.availability-final');
@@ -259,5 +270,74 @@ test.describe('public availability surface', () => {
     const dbAfter = reservationState();
     expect(dbAfter).toEqual(dbBefore);
     expect(dbAfter.Turno).toBe(dbBefore.Turno);
+  });
+
+  test('renders the read-only step chrome, chip, professional pill and jump control', async ({
+    page,
+  }) => {
+    const [ctx, catalogBody] = await Promise.all([context(), catalog()]);
+    const avail = await availability(catalogBody.services[0].publicServiceToken);
+
+    await page.goto(`/reservar?service=${avail.service.publicServiceToken}`);
+
+    // The home header must not render on the booking route; modal chrome replaces it.
+    await expect(page.locator('header.topbar, .logo')).toHaveCount(0);
+
+    // Deterministic `/` links for both back and close.
+    const volver = page.getByRole('link', { name: 'Volver' });
+    const cerrar = page.getByRole('link', { name: 'Cerrar' });
+    await expect(volver).toHaveAttribute('href', '/');
+    await expect(cerrar).toHaveAttribute('href', '/');
+
+    // The crumb shows the database shop name.
+    await expect(page.locator('.topbar-crumb')).toHaveText(ctx.barberia.name);
+
+    // Chip: database service name plus the shared duration · price treatment.
+    const chip = page.locator('.service-chip');
+    await expect(chip.locator('.name')).toHaveText(avail.service.name);
+    await expect(chip.locator('.meta')).toContainText('·');
+
+    // Both section labels render.
+    await expect(page.getByText('Elegí una fecha', { exact: true })).toBeVisible();
+    await expect(page.getByText('Elegí un horario', { exact: true })).toBeVisible();
+
+    // Exactly one static professional affordance: pill, avatar and chevron, no selector.
+    const pill = page.locator('.prof-select');
+    await expect(pill).toHaveCount(1);
+    await expect(pill).toContainText('Cualquier profesional');
+    await expect(pill.locator('.prof-avatar')).toHaveCount(1);
+    await expect(pill.locator('.prof-chevron')).toHaveCount(1);
+    await expect(page.locator('.prof-select-label')).toHaveCount(0);
+
+    // The calendar-jump control is present with its accessible label.
+    await expect(page.getByRole('button', { name: 'Ir a una fecha específica' })).toBeVisible();
+
+    // The default-selected open day renders its slots under a non-empty group heading.
+    const openDay = avail.days.find((day) => day.slots.length > 0);
+    if (!openDay) throw new Error('the local scratch stack exposes at least one open day');
+    await expect(dateCard(page, openDay)).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('.availability-slots .time-group').first()).toBeVisible();
+  });
+
+  test('jumps to the selected date card without opening a date dialog', async ({ page }) => {
+    const { services } = await catalog();
+    const avail = await availability(services[0].publicServiceToken);
+    const openDays = avail.days.filter((day) => day.slots.length > 0);
+    const last = openDays[openDays.length - 1];
+    if (!last) throw new Error('the local scratch stack exposes at least one open day');
+
+    await page.goto(`/reservar?service=${services[0].publicServiceToken}`);
+
+    const card = dateCard(page, last);
+    await card.click();
+    await expect(card).toHaveAttribute('aria-pressed', 'true');
+
+    await page.getByRole('button', { name: 'Ir a una fecha específica' }).click();
+
+    // The jump only scrolls and focuses the selected card; it never opens a dialog
+    // and never navigates.
+    await expect(card).toBeFocused();
+    await expect(page.locator('[role="dialog"]')).toHaveCount(0);
+    expect(new URL(page.url()).pathname).toBe('/reservar');
   });
 });
