@@ -114,8 +114,10 @@ differing `dias_habiles` pair.
 **Case.** Spec scenario "Invalid or unknown input": an unknown query field or a date
 outside the window returns a stable client error.
 
-**Status: closed.** `npm run test:edge` (`scripts/edge-test.sh`) drives the **served**
-Edge function over real HTTP and asserts status, stable code and the `no-store` header
+**Status: closed.** `npm run test:edge` (`scripts/edge-test.sh`) drives the
+**repository's own** Edge function over real HTTP — it starts a Functions server from a
+throwaway workdir whose only mount is a symlink to this repo's `supabase/functions` — and
+asserts status, stable code and the `no-store` header
 for each branch: unknown query field and malformed `date` → `INVALID_INPUT` (400), a
 date the window cannot contain → `AVAILABILITY_RANGE_EXCEEDED` (400), an unknown service
 token and an unknown slug → `PUBLIC_RESOURCE_NOT_FOUND` (404), and a non-GET method →
@@ -145,13 +147,16 @@ dedicated non-persistence assertion exists, but there is no store to assert agai
 "the response is uncached" (`specs/public-availability-read/spec.md`, "Authoritative
 availability contract").
 
-**Status: closed.** `npm run test:edge` (`scripts/edge-test.sh`) asserts the served
-`no-store` header on the 200 path **and** on every error path it exercises (unknown query
+**Status: closed.** `npm run test:edge` (`scripts/edge-test.sh`) asserts the `no-store`
+header on the 200 path **and** on every error path it exercises (unknown query
 field, malformed date, date outside the window, unknown service token, unknown slug, wrong
 method). It is a reproducible in-repo command, replacing the earlier one-off `curl -i`
 observation. `supabase/functions/_shared/http.test.ts` additionally pins the response
 factory (`jsonResponse`/`errorResponse`/`handleOptions`) as a fast unit-level guard, but
-the real-HTTP check is the evidence that closes this entry.
+the real-HTTP check is the evidence that closes this entry. The header is proven against
+this repository's bytes, not the stack's copy: removing the `no-store` line from
+`supabase/functions/_shared/http.ts` fails 7 of the 28 checks, and restoring it returns
+28/0.
 
 ### D8 — Token rotation and value preservation
 
@@ -170,6 +175,32 @@ nothing exercises a later `UPDATE`. Uniqueness and non-NULL hold by DDL, not by 
 `public_service_token` is unchanged, and (2) overwrites one token and asserts the previous token
 now returns `PUBLIC_RESOURCE_NOT_FOUND`.
 
+### D9 — `npm run test:e2e` is not bound to this repository's Edge files
+
+**Case.** Every E2E test that reads availability or the catalog
+(`tests/e2e/public-availability.spec.ts`, `profile.spec.ts`) exercises the Edge Function
+through Kong.
+
+**Why it is deferred.** Playwright starts the two Next production servers only; it never
+starts or supervises the Edge. The app reads `SUPABASE_URL=http://127.0.0.1:54321`
+(`.env.local`), Kong forwards `/functions/v1/*` to the ambient
+`supabase_edge_runtime_conexion-db` container, and that container bind-mounts
+`<stack-workdir>/supabase/functions`. On this host the stack was started from
+`/home/mauro/conexion-db`, so E2E services that checkout's copy, not this repository's
+files: the same mutation that fails `test:edge` (removing `no-store`) would leave E2E
+green.
+
+**What would unblock it.** A reusable serve script (extracted from `scripts/edge-test.sh`,
+which already mounts this repo into a throwaway workdir and tears the server down), plus a
+third Playwright `webServer` entry with `reuseExistingServer: false` so an ambient copy is
+never silently reused. Estimated 90–120 changed lines across `scripts/` and
+`playwright.config.ts`, and it moves the Edge lifecycle under E2E control — deferred as its
+own unit rather than folded into this harness correction.
+
+**Changed precondition.** `npm run test:edge` now starts and stops its own repo-served
+Functions server, so it leaves the local Edge runtime stopped. Anything that reads the
+Edge afterwards — E2E and the app included — must serve it first.
+
 ## Operational preconditions
 
 These must be running for the evidence above to exist at all. They are not product
@@ -177,9 +208,11 @@ behavior, and a green suite with a missing precondition is a false negative.
 
 | # | Precondition | Needed by |
 |---|---|---|
-| P1 | Local Supabase stack reachable (Postgres 54322, Kong 54321, and the `public-availability` Edge function served) with migrations `phase9`..`phase12` applied | `npm run test:db`, `npm run test:edge`, `npm run test:e2e` |
+| P1 | Local Supabase stack reachable (Postgres 54322 and Kong 54321) with migrations `phase9`..`phase12` applied | `npm run test:db`, `npm run test:edge` |
 | P2 | Docker reachable through `sg docker`, plus `SUPABASE_TEST_NETWORK=supabase_network_conexion-db` | `scripts/db-test.sh` (the repo `config.toml` carries the production project id) |
-| P3 | `.env.local` with `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `BARBERSHOP_PUBLIC_SLUG` pointing at the local stack, loaded before `.env` | app reads, `npm run test:edge`, `npm run test:e2e` |
+| P3 | `.env.local` with `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `BARBERSHOP_PUBLIC_SLUG` and `PUBLIC_AVAILABILITY_HMAC_SECRET` pointing at the local stack, loaded before `.env` | app reads, `npm run test:edge`, `npm run test:e2e` |
 | P4 | A prior `npm run build` (Playwright refuses to fall back to `next dev`) | `npm run test:e2e` |
 | P5 | At least one future day with slots for the read-only E2E flow | `tests/e2e/public-availability.spec.ts:222-224` |
 | P6 | A published service for `BARBERSHOP_PUBLIC_SLUG`, so `scripts/edge-test.sh` can resolve a live 32-hex service token before its HTTP checks | `npm run test:edge` |
+| P7 | The running stack's project id matches `EDGE_TEST_PROJECT_ID` (default `conexion-db`), so `scripts/edge-test.sh` can attach its own Functions server to that stack | `npm run test:edge` |
+| P8 | An ambient Edge Function served on the stack (by `supabase start` or `functions serve`). `npm run test:edge` starts and stops its own repo-served one, so the Edge is stopped after it runs | `npm run test:e2e`, app reads |

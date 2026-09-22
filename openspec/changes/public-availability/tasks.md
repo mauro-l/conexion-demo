@@ -63,5 +63,7 @@ Order: 1→2→3→4→5; task 2.1 parallels 4.1.
 - [x] 6.1 Make the lead-time fixture window wrap-proof: clamp `pg_temp.lead_open` to `00:00` and `pg_temp.lead_close` to `24:00`, derive the expected first grid step from the same anchor the fixture uses, and classify the final window before local midnight as an explicit `skip` while keeping the non-vacuity guard armed for every other clock [availability-read: boundary]
 - [x] 6.2 Add the whole-day construction sweep (section 6b): 48 synthetic local clocks assert no wrap, an exact-hour anchor, an eligible today start outside the documented window, and the `23:30` skip classification [availability-read: boundary]
 - [x] 6.3 Update `deferred-coverage.md` D1 to record what is proven across the whole day and what remains genuinely unprovable [availability-read]
+- [x] 6.4 Bind `npm run test:edge` to this repository's Functions: start a repo-mounted local Functions server before the checks, poll the endpoint for readiness, tear the server down on exit (including on failure), and prove the binding by mutating `supabase/functions/_shared/http.ts` — 7 assertions fail, then pass again after restore [availability-read: invalid; tokens]
+- [x] 6.5 Record in `deferred-coverage.md` that `npm run test:e2e` still services whatever the stack's Edge container mounts (the scratch copy), and the plan to bind it [availability-read]
 
 RED tests: none — matrix all `N/A`.
