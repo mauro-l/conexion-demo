@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { formatDuration, formatLocalDateTime, formatPrice } from '~/lib/public-format';
 import type { ManagedBooking } from '~/types/booking';
 
@@ -29,17 +30,22 @@ export function ManageBooking({
   booking,
   token,
   cancelEndpoint,
-  shopWhatsappUrl,
 }: {
   booking: ManagedBooking;
   token: string;
   cancelEndpoint: string;
-  shopWhatsappUrl: string | null;
 }) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const statusVariant =
+    booking.status === 'confirmado'
+      ? 'confirmed'
+      : booking.status === 'cancelado'
+        ? 'cancelled'
+        : 'neutral';
 
   async function cancelBooking() {
     if (sending) return;
@@ -70,86 +76,121 @@ export function ManageBooking({
   }
 
   return (
-    <section className="confirm-card" aria-label="Resumen del turno">
-      <div className="recap-row">
-        <div>
-          <span className="label">Servicio</span>
-          <span className="value">{booking.serviceName}</span>
+    <div className="manage-booking">
+      <section className="recap" aria-label="Resumen del turno">
+        <div className="recap-row">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+            <rect x="3" y="4" width="18" height="4" rx="1" />
+            <path d="M4 8v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V8" />
+          </svg>
+          <div>
+            <span className="label">Servicio</span>
+            <span className="value">{booking.serviceName}</span>
+          </div>
         </div>
-      </div>
-      <div className="recap-row">
-        <div>
-          <span className="label">Fecha y hora</span>
-          <span className="value">{formatLocalDateTime(booking.start)}</span>
+        <div className="recap-row">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+            <rect x="3" y="5" width="18" height="16" rx="2" />
+            <path d="M3 10h18M8 3v4M16 3v4" />
+          </svg>
+          <div>
+            <span className="label">Fecha y hora</span>
+            <span className="value">{formatLocalDateTime(booking.start)}</span>
+          </div>
         </div>
-      </div>
-      <div className="recap-row">
-        <div>
-          <span className="label">Duración · precio</span>
-          <span className="value">
-            {formatDuration(booking.durationMinutes)}
-            <span className="dot"> · </span>
-            {formatPrice(booking.price)}
-          </span>
+        <div className="recap-row">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+            <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+          </svg>
+          <div>
+            <span className="label">Duración · precio</span>
+            <span className="value">
+              {formatDuration(booking.durationMinutes)}
+              <span className="dot"> · </span>
+              {formatPrice(booking.price)}
+            </span>
+          </div>
         </div>
-      </div>
-      <div className="recap-row">
-        <div>
-          <span className="label">Profesional</span>
-          <span className="value">{booking.barberName}</span>
+        <div className="recap-row">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+            <path d="M20 21a8 8 0 1 0-16 0" />
+            <circle cx="12" cy="7" r="4" />
+          </svg>
+          <div>
+            <span className="label">Profesional</span>
+            <span className="value">{booking.barberName}</span>
+          </div>
         </div>
-      </div>
-      <div className="recap-row">
-        <div>
-          <span className="label">Estado</span>
-          <span className="value">{STATUS_LABEL[booking.status]}</span>
+        <div className="recap-row">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M9 12l2 2 4-4" />
+          </svg>
+          <div>
+            <span className="label">Estado</span>
+            <span className={`status-badge ${statusVariant}`}>
+              <span className="dot" aria-hidden="true" />
+              <span>{STATUS_LABEL[booking.status]}</span>
+            </span>
+          </div>
         </div>
-      </div>
+      </section>
 
       {booking.status === 'cancelado' ? (
-        <p className="confirm-note">Este turno ya está cancelado.</p>
+        <>
+          <div className="note-box">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M12 8v5M12 16h.01" />
+            </svg>
+            <span>Este turno fue cancelado. Podés reservar uno nuevo cuando quieras.</span>
+          </div>
+          <Link className="btn-primary" href="/">
+            Reservar otro turno
+          </Link>
+        </>
       ) : booking.canCancel ? (
-        <div className="form-actions">
-          {confirming ? (
-            <>
-              <p className="confirm-note">¿Cancelar este turno?</p>
+        confirming ? (
+          <div className="confirm-panel">
+            <p>¿Seguro que querés cancelar este turno? Esta acción no se puede deshacer.</p>
+            <div className="row">
               <button
                 type="button"
                 className="btn-secondary"
                 onClick={() => setConfirming(false)}
                 disabled={sending}
               >
-                No, volver
+                No, mantener
               </button>
               <button
                 type="button"
-                className="ticket-cta"
+                className="btn-danger"
                 onClick={cancelBooking}
                 disabled={sending}
               >
-                {sending ? 'Cancelando…' : 'Sí, cancelar turno'}
+                Sí, cancelar
               </button>
-            </>
-          ) : (
+            </div>
+          </div>
+        ) : (
+          <div className="actions">
             <button
               type="button"
-              className="btn-outline-wide"
+              className="btn-danger-outline"
               onClick={() => setConfirming(true)}
             >
               Cancelar turno
             </button>
-          )}
-        </div>
+          </div>
+        )
       ) : (
-        <p className="confirm-note">
-          Este turno ya no se puede cancelar porque está muy cerca del horario o ya empezó.
-          {shopWhatsappUrl ? (
-            <>
-              {' '}
-              <a href={shopWhatsappUrl}>Escribinos por WhatsApp.</a>
-            </>
-          ) : null}
-        </p>
+        <div className="note-box">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} aria-hidden="true">
+            <circle cx="12" cy="12" r="9" />
+            <path d="M12 8v5M12 16h.01" />
+          </svg>
+          <span>Este turno ya no se puede cancelar porque está muy cerca del horario o ya empezó.</span>
+        </div>
       )}
 
       {error ? (
@@ -157,6 +198,17 @@ export function ManageBooking({
           {error}
         </p>
       ) : null}
-    </section>
+
+      {/*
+       * A page reached from a link (an email, the confirmation) has no history
+       * to return to, so it needs its own way out. The cancelled state already
+       * carries the rebook call to action, which is the same destination.
+       */}
+      {booking.status === 'cancelado' ? null : (
+        <Link className="manage-exit" href="/">
+          Volver al inicio
+        </Link>
+      )}
+    </div>
   );
 }

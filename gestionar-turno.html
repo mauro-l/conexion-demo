@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1">
+<title>Gestionar turno | Conexión Barbería</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#EFEDE7;
+    --ink-soft:#B5B2A8;
+    --paper:#1C1C1D;
+    --card:#29292B;
+    --line:#3A3A3C;
+    --brass:#B8A468;
+    --brass-dark:#8C7A45;
+    --muted:#837E6F;
+    --disabled:#46443E;
+    --error:#D9705A;
+    --success:#7CA37F;
+    --fill-strong:#0E0E0F;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  button{font-family:inherit;}
+
+  /* ---------- Topbar (igual que el resto del sitio) ---------- */
+  .topbar{
+    position:sticky; top:0; z-index:20;
+    display:flex; align-items:center; justify-content:space-between;
+    padding:16px 20px;
+    background:var(--paper);
+    border-bottom:1px solid var(--line);
+    max-width:640px; margin:0 auto;
+  }
+  .logo{font-family:'Oswald',sans-serif; font-weight:700; font-size:18px; letter-spacing:0.04em; text-transform:uppercase;}
+  .logo span{color:var(--brass);}
+
+  main{padding:24px 20px 60px; max-width:480px; margin:0 auto;}
+
+  .eyebrow{font-size:12px; font-weight:600; letter-spacing:0.14em; text-transform:uppercase; color:var(--brass-dark); margin:0 0 8px;}
+  h1.title{font-family:'Oswald',sans-serif; font-weight:700; font-size:clamp(24px,6vw,30px); text-transform:uppercase; margin:0 0 10px; line-height:1.1;}
+  p.subtitle{font-size:13.5px; color:var(--muted); margin:0 0 24px; line-height:1.5;}
+
+  /* ---------- Recap card (mismo patrón que confirm-card) ---------- */
+  .recap{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:6px 16px; margin-bottom:22px;}
+  .recap-row{display:flex; align-items:flex-start; gap:10px; padding:12px 0; font-size:13.5px;}
+  .recap-row + .recap-row{border-top:1px solid var(--line);}
+  .recap-row svg{flex-shrink:0; margin-top:2px; color:var(--brass-dark);}
+  .recap-row .label{display:block; font-size:11px; color:var(--muted); text-transform:uppercase; letter-spacing:0.03em; margin-bottom:2px;}
+  .recap-row .value{font-weight:600;}
+  .recap-row .price{margin-left:auto; font-family:'IBM Plex Mono',monospace; font-weight:600; white-space:nowrap;}
+
+  /* ---------- Status badge ---------- */
+  .status-badge{display:inline-flex; align-items:center; gap:6px; padding:3px 10px 3px 8px; border-radius:999px; font-size:12.5px; font-weight:600;}
+  .status-badge .dot{width:7px; height:7px; border-radius:50%;}
+  .status-badge.confirmed{background:rgba(124,163,127,0.16); color:var(--success);}
+  .status-badge.confirmed .dot{background:var(--success);}
+  .status-badge.cancelled{background:rgba(217,112,90,0.16); color:var(--error);}
+  .status-badge.cancelled .dot{background:var(--error);}
+
+  /* ---------- Buttons ---------- */
+  .btn-primary{width:100%; background:var(--brass); color:var(--paper); border:none; border-radius:10px; padding:13px 18px; font-size:14px; font-weight:600; cursor:pointer;}
+  .btn-primary:active{transform:scale(0.98);}
+  .btn-danger-outline{width:100%; background:none; border:1px solid var(--error); color:var(--error); border-radius:10px; padding:13px 18px; font-size:14px; font-weight:600; cursor:pointer;}
+  .btn-danger-outline:hover{background:rgba(217,112,90,0.08);}
+  .btn-secondary{flex:1; background:none; border:1px solid var(--line); color:var(--ink); border-radius:10px; padding:13px 18px; font-size:14px; font-weight:600; cursor:pointer;}
+  .btn-danger{flex:1; background:var(--error); color:var(--fill-strong); border:none; border-radius:10px; padding:13px 18px; font-size:14px; font-weight:600; cursor:pointer;}
+
+  /* ---------- Confirm-cancel panel ---------- */
+  .confirm-panel{background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:16px; margin-top:14px;}
+  .confirm-panel p{margin:0 0 14px; font-size:13.5px; color:var(--ink-soft); line-height:1.5;}
+  .confirm-panel .row{display:flex; gap:10px;}
+  .confirm-panel[hidden]{display:none;}
+
+  /* ---------- Cancelled note ---------- */
+  .note-box{display:flex; gap:10px; background:var(--card); border:1px solid var(--line); border-radius:12px; padding:14px 16px; font-size:13px; color:var(--ink-soft); line-height:1.5; margin-bottom:18px;}
+  .note-box svg{flex-shrink:0; margin-top:1px; color:var(--brass-dark);}
+  .note-box[hidden]{display:none;}
+
+  .actions[hidden]{display:none;}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="logo">CONEXIÓN <span>BARBERÍA</span></div>
+</header>
+
+<main>
+  <p class="eyebrow">Gestionar turno</p>
+  <h1 class="title">Tu turno en Conexión Barbería</h1>
+  <p class="subtitle">Consultá el resumen y el estado de tu turno.</p>
+
+  <div class="recap">
+    <div class="recap-row">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="4" rx="1"/><path d="M4 8v11a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1V8"/></svg>
+      <div><span class="label">Servicio</span><span class="value">Barba + toalla caliente</span></div>
+    </div>
+    <div class="recap-row">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>
+      <div><span class="label">Fecha y hora</span><span class="value">25/9 a las 12:00</span></div>
+    </div>
+    <div class="recap-row">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+      <div><span class="label">Duración · precio</span><span class="value">30 min · $21.000</span></div>
+    </div>
+    <div class="recap-row">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21a8 8 0 1 0-16 0"/><circle cx="12" cy="7" r="4"/></svg>
+      <div><span class="label">Profesional</span><span class="value">Juan Pérez</span></div>
+    </div>
+    <div class="recap-row">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M9 12l2 2 4-4"/></svg>
+      <div><span class="label">Estado</span>
+        <span class="status-badge confirmed" id="status-badge"><span class="dot"></span><span id="status-text">Confirmado</span></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="note-box" id="cancelled-note" hidden>
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16h.01"/></svg>
+    <span>Este turno fue cancelado. Podés reservar uno nuevo cuando quieras.</span>
+  </div>
+
+  <div class="actions" id="actions-default">
+    <button class="btn-danger-outline" id="cancel-btn">Cancelar turno</button>
+  </div>
+
+  <div class="confirm-panel" id="confirm-panel" hidden>
+    <p>¿Seguro que querés cancelar este turno? Esta acción no se puede deshacer.</p>
+    <div class="row">
+      <button class="btn-secondary" id="keep-btn">No, mantener</button>
+      <button class="btn-danger" id="confirm-cancel-btn">Sí, cancelar</button>
+    </div>
+  </div>
+
+  <button class="btn-primary" id="rebook-btn" hidden style="margin-top:4px;">Reservar otro turno</button>
+</main>
+
+<script>
+  const cancelBtn = document.getElementById('cancel-btn');
+  const keepBtn = document.getElementById('keep-btn');
+  const confirmCancelBtn = document.getElementById('confirm-cancel-btn');
+  const confirmPanel = document.getElementById('confirm-panel');
+  const actionsDefault = document.getElementById('actions-default');
+  const statusBadge = document.getElementById('status-badge');
+  const statusText = document.getElementById('status-text');
+  const cancelledNote = document.getElementById('cancelled-note');
+  const rebookBtn = document.getElementById('rebook-btn');
+
+  cancelBtn.addEventListener('click', () => {
+    actionsDefault.hidden = true;
+    confirmPanel.hidden = false;
+  });
+
+  keepBtn.addEventListener('click', () => {
+    confirmPanel.hidden = true;
+    actionsDefault.hidden = false;
+  });
+
+  confirmCancelBtn.addEventListener('click', () => {
+    statusBadge.classList.remove('confirmed');
+    statusBadge.classList.add('cancelled');
+    statusText.textContent = 'Cancelado';
+    confirmPanel.hidden = true;
+    cancelledNote.hidden = false;
+    rebookBtn.hidden = false;
+  });
+
+  rebookBtn.addEventListener('click', () => {
+    window.location.href = '/';
+  });
+</script>
+</body>
+</html>
