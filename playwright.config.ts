@@ -35,7 +35,12 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  // The suite drives one shared, mutable scratch database, and
+  // `public-availability.spec.ts` asserts the reservation tables are untouched
+  // while it runs. Serial is the only isolation that holds: a parallel worker
+  // that books a slot (the cancellation flow) breaks that invariant. CI already
+  // forced this; local now matches.
+  workers: 1,
   reporter: 'list',
   use: {
     trace: 'on-first-retry',
@@ -43,7 +48,11 @@ export default defineConfig({
   projects: [
     {
       name: 'landing',
-      testMatch: [/profile\.spec\.ts/, /public-availability\.spec\.ts/],
+      testMatch: [
+        /profile\.spec\.ts/,
+        /public-availability\.spec\.ts/,
+        /public-cancellation\.spec\.ts/,
+      ],
       use: { ...devices['Desktop Chrome'], baseURL: `http://localhost:${LANDING_PORT}` },
     },
     {

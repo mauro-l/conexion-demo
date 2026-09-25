@@ -240,6 +240,114 @@ assert_error_code() {
   assert_no_store "$label"
 }
 
+# New management responses can contain untrusted input if a regression echoes
+# it. Check the same stable-code, status, internal-id, and cache contracts
+# without printing a response body on failure.
+assert_error_code_redacted() {
+  local label="$1" code="$2" expected_status="$3" actual_code
+  assert_eq "$label: status" "$expected_status" "$(status)"
+  actual_code="$(node -e '
+    try {
+      const body = JSON.parse(require("node:fs").readFileSync(0, "utf8"));
+      if (typeof body?.error?.code === "string") process.stdout.write(body.error.code);
+    } catch {}
+  ' < "$work/body")"
+  assert_eq "$label: stable code" "$code" "$actual_code"
+  assert_eq "$label: no internal ids" "0" \
+    "$(printf '%s' "$(body)" | grep -cE '"(id|barbero_id|barberia_id|users_id)"' || true)"
+  assert_no_store "$label"
+}
+
+request_json() {
+  local method="$1" url="$2" payload="$3"
+  curl --silent --show-error --max-time "$timeout" \
+    --request "$method" \
+    --dump-header "$work/headers" \
+    --output "$work/body" \
+    --write-out '%{http_code}\n' \
+    --header "Authorization: Bearer $anon_key" \
+    --header 'Content-Type: application/json' \
+    --data "$payload" \
+    "$url" > "$work/status"
+  tr 'A-Z' 'a-z' < "$work/headers" > "$work/headers.lc"
+}
+
+request_booking() {
+  local url="$1" payload="$2" idempotency_key="$3"
+  curl --silent --show-error --max-time "$timeout" \
+    --request POST \
+    --dump-header "$work/headers" \
+    --output "$work/body" \
+    --write-out '%{http_code}\n' \
+    --header "Authorization: Bearer $anon_key" \
+    --header 'Content-Type: application/json' \
+    --header "Idempotency-Key: $idempotency_key" \
+    --data "$payload" \
+    "$url" > "$work/status"
+  tr 'A-Z' 'a-z' < "$work/headers" > "$work/headers.lc"
+}
+
+json_value() {
+  local path="$1"
+  node -e '
+    const value = JSON.parse(require("node:fs").readFileSync(0, "utf8"));
+    const result = process.argv[1].split(".").reduce((current, key) => current?.[key], value);
+    if (result !== undefined && result !== null) process.stdout.write(String(result));
+  ' "$path" < "$work/body"
+}
+
+availability_slot_value() {
+  local field="$1"
+  node -e '
+    const value = JSON.parse(require("node:fs").readFileSync(0, "utf8"));
+    const slot = value.days.slice(1).find((day) => day.slots.length > 0)?.slots[0];
+    if (slot?.[process.argv[1]] !== undefined) process.stdout.write(String(slot[process.argv[1]]));
+  ' "$field" < "$work/body"
+}
+
+assert_absent() {
+  local label="$1" needle="$2" haystack="$3"
+  if [[ "$haystack" != *"$needle"* ]]; then
+    pass "$label"
+  else
+    fatal "$label"
+  fi
+}
+
+assert_no_hash_value() {
+  local label="$1" response_body="$2"
+  if [[ "$response_body" =~ [A-Fa-f0-9]{64} ]]; then
+    fatal "$label"
+  else
+    pass "$label"
+  fi
+}
+
+assert_managed_response_redacted() {
+  local label="$1" response_body="$2" token="$3" phone="$4" email="$5"
+  assert_absent "$label: management token is not exposed" "$token" "$response_body"
+  assert_absent "$label: phone is not exposed" "$phone" "$response_body"
+  assert_absent "$label: email is not exposed" "$email" "$response_body"
+  assert_absent "$label: customer name is not exposed" '"Edge"' "$response_body"
+  assert_absent "$label: customer surname is not exposed" '"Cancellation"' "$response_body"
+  assert_absent "$label: token hash field is not exposed" 'management_token_hash' "$response_body"
+  assert_no_hash_value "$label: hash values are not exposed" "$response_body"
+  assert_eq "$label: no internal ids" "0" \
+    "$(printf '%s' "$response_body" | grep -cE '"(id|barbero_id|barberia_id|users_id)"' || true)"
+}
+
+print_redacted_server_log() {
+  echo "edge-test: repo-served runtime log (credentials, tokens, hashes, emails and phone numbers redacted)" >&2
+  tail -n 40 "$server_log" | perl -pe '
+    s/eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+/[REDACTED_JWT]/g;
+    s/[A-Za-z0-9_-]{43}/[REDACTED_TOKEN]/g;
+    s/[A-Fa-f0-9]{64}/[REDACTED_HASH]/g;
+    s/[A-Za-z0-9._%+-]+\@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/[REDACTED_EMAIL]/g;
+    s/\+?[0-9][0-9 ()-]{8,}[0-9]/[REDACTED_PHONE]/g;
+    s/Edge Cancellation/[REDACTED_NAME]/g;
+  ' >&2 || true
+}
+
 echo "edge-test: waiting for the repo-served Edge runtime to come up"
 
 # 0. Resolve a live service token through the read-only catalog. Readiness is
@@ -261,7 +369,7 @@ done
 if (( ready == 0 )); then
   echo "edge-test: the repo-served Edge runtime never served ${catalog_url}" >&2
   echo "edge-test: server log follows" >&2
-  tail -n 20 "$server_log" >&2 || true
+  print_redacted_server_log
   exit 1
 fi
 
@@ -306,6 +414,119 @@ assert_error_code "unknown slug" "PUBLIC_RESOURCE_NOT_FOUND" "404"
 # 7. Wrong HTTP method -> its own stable code and status, still no-store.
 request POST "$availability_base"
 assert_error_code "wrong HTTP method" "METHOD_NOT_ALLOWED" "405"
+
+# 8. Public management endpoints reject unknown, malformed, and wrong-method
+#    requests with their stable codes and no-store on every response.
+manage_base="${base_url}/functions/v1/public-booking-manage"
+cancel_endpoint="${base_url}/functions/v1/public-booking-cancel"
+foreign_token="$(node -e 'process.stdout.write(require("node:crypto").randomBytes(32).toString("base64url"))')"
+
+request GET "${manage_base}?token=${foreign_token}"
+assert_error_code_redacted "unknown management token" "PUBLIC_RESOURCE_NOT_FOUND" "404"
+assert_absent "unknown management token: token is not echoed" "$foreign_token" "$(body)"
+assert_no_hash_value "unknown management token: hash is not exposed" "$(body)"
+
+request GET "${manage_base}?token=malformed"
+assert_error_code_redacted "malformed management token" "INVALID_INPUT" "400"
+
+request POST "$manage_base"
+assert_error_code_redacted "wrong management read method" "METHOD_NOT_ALLOWED" "405"
+
+request_json POST "$cancel_endpoint" 'not-json'
+assert_error_code_redacted "malformed cancellation body" "INVALID_INPUT" "400"
+
+request_json POST "$cancel_endpoint" '{"token":"malformed"}'
+assert_error_code_redacted "malformed cancellation token" "INVALID_INPUT" "400"
+
+request GET "$cancel_endpoint"
+assert_error_code_redacted "wrong cancellation method" "METHOD_NOT_ALLOWED" "405"
+
+# 9. Full availability -> booking -> management -> cancellation round-trip.
+#    Select a future slot directly from the live DTO so it remains grid-valid
+#    and outside the lead-time boundary while the request runs.
+request GET "$availability_base"
+assert_eq "cancellation flow availability: status" "200" "$(status)"
+assert_no_store "cancellation flow availability"
+service_name="$(json_value service.name)"
+slot_start="$(availability_slot_value start)"
+availability_token="$(availability_slot_value availabilityToken)"
+if [[ -z "$slot_start" || -z "$availability_token" ]]; then
+  fatal "cancellation flow: availability exposed no future slot"
+  echo "edge-test: server log follows" >&2
+  print_redacted_server_log
+  exit 1
+fi
+pass "cancellation flow: future grid slot resolved"
+
+idempotency_key="edge-cancel-$(date +%s)-${RANDOM}-${RANDOM}"
+phone_local="$(printf '%04d%04d' "$((RANDOM % 10000))" "$((RANDOM % 10000))")"
+phone="+54911${phone_local}"
+email="${idempotency_key}@example.com"
+booking_payload="$(node -e '
+  const [token, phone, phoneLocal, email] = process.argv.slice(1);
+  process.stdout.write(JSON.stringify({
+    token,
+    nombre: "Edge",
+    apellido: "Cancellation",
+    telefono: phone,
+    telefonoRaw: `11${phoneLocal}`,
+    email,
+  }));
+' "$availability_token" "$phone" "$phone_local" "$email")"
+request_booking "${base_url}/functions/v1/public-booking" "$booking_payload" "$idempotency_key"
+if [[ "$(status)" != "201" ]]; then
+  booking_error_code="$(json_value error.code 2>/dev/null || true)"
+  fatal "cancellation flow booking: expected [201], got [$(status)] (code ${booking_error_code:-unavailable})"
+  print_redacted_server_log
+  exit 1
+fi
+pass "cancellation flow booking: status"
+assert_no_store "cancellation flow booking"
+
+management_token="$(json_value management.token)"
+if [[ ! "$management_token" =~ ^[A-Za-z0-9_-]{43}$ ]]; then
+  fatal "cancellation flow booking: management grant is missing or malformed"
+  print_redacted_server_log
+  exit 1
+fi
+pass "cancellation flow booking: management token issued"
+assert_eq "cancellation flow booking: service snapshot" "$service_name" "$(json_value booking.serviceName)"
+
+request GET "${manage_base}?token=${management_token}"
+assert_eq "cancellation flow management read: status" "200" "$(status)"
+assert_no_store "cancellation flow management read"
+assert_eq "cancellation flow management read: service" "$service_name" "$(json_value booking.serviceName)"
+assert_absent "cancellation flow management read: booking is not cancelled" '"status":"cancelado"' "$(body)"
+assert_managed_response_redacted "cancellation flow management read" "$(body)" "$management_token" "$phone" "$email"
+
+cancel_payload="$(node -e 'process.stdout.write(JSON.stringify({ token: process.argv[1] }))' "$management_token")"
+request_json POST "$cancel_endpoint" "$cancel_payload"
+assert_eq "cancellation flow cancel: status" "200" "$(status)"
+assert_no_store "cancellation flow cancel"
+assert_eq "cancellation flow cancel: status value" "cancelado" "$(json_value booking.status)"
+assert_managed_response_redacted "cancellation flow cancel" "$(body)" "$management_token" "$phone" "$email"
+
+request GET "${manage_base}?token=${management_token}"
+assert_eq "cancellation flow re-read: status" "200" "$(status)"
+assert_no_store "cancellation flow re-read"
+assert_eq "cancellation flow re-read: status value" "cancelado" "$(json_value booking.status)"
+assert_managed_response_redacted "cancellation flow re-read" "$(body)" "$management_token" "$phone" "$email"
+
+request_json POST "$cancel_endpoint" "$cancel_payload"
+assert_eq "cancellation flow repeated cancel: status" "200" "$(status)"
+assert_no_store "cancellation flow repeated cancel"
+assert_eq "cancellation flow repeated cancel: status value" "cancelado" "$(json_value booking.status)"
+assert_managed_response_redacted "cancellation flow repeated cancel" "$(body)" "$management_token" "$phone" "$email"
+
+request GET "$availability_base"
+assert_eq "cancellation flow released availability: status" "200" "$(status)"
+assert_no_store "cancellation flow released availability"
+released="$(node -e '
+  const value = JSON.parse(require("node:fs").readFileSync(0, "utf8"));
+  const found = value.days.some((day) => day.slots.some((slot) => slot.start === process.argv[1]));
+  process.stdout.write(String(found));
+' "$slot_start" < "$work/body")"
+assert_eq "cancellation flow: slot is released again" "true" "$released"
 
 echo "edge-test: ${checks} checks, ${failures} failed"
 if (( failures > 0 )); then
