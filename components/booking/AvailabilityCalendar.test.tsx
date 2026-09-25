@@ -1,7 +1,23 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { useRouter } from 'next/navigation';
 import { AvailabilityCalendar, bucketSlots } from '~/components/booking/AvailabilityCalendar';
 import type { AvailabilityDay, AvailabilitySlot } from '~/types/booking';
+import type { Booking } from '~/components/booking/BookingForm';
+
+/**
+ * The island reads `useRouter().refresh()` when a booking ends, so it needs a
+ * router in scope and the tests need a handle on it. The factory builds the spy
+ * itself: referencing an outer variable there would read it before it exists.
+ */
+vi.mock('next/navigation', () => ({ useRouter: vi.fn() }));
+
+const refresh = vi.fn();
+
+beforeEach(() => {
+  refresh.mockClear();
+  vi.mocked(useRouter).mockReturnValue({ refresh } as unknown as ReturnType<typeof useRouter>);
+});
 
 const twoDays: AvailabilityDay[] = [
   {
@@ -278,5 +294,92 @@ describe('AvailabilityCalendar', () => {
     expect(screen.getByText('Mañana')).toBeInTheDocument();
     expect(screen.queryByText('Tarde')).toBeNull();
     expect(screen.queryByText('Noche')).toBeNull();
+  });
+
+  it('re-reads availability when a finished booking starts another appointment', async () => {
+    const booked: Booking = {
+      start: '2026-09-21T09:00',
+      end: '2026-09-21T09:40',
+      durationMinutes: 40,
+      price: 8000,
+      status: 'confirmado',
+      origin: 'web',
+      serviceName: 'Corte clásico',
+      barberName: 'Tero Jr',
+      shopName: 'Conexión Barbería',
+      customer: { name: 'Mauro', phone: '+5491123456789', email: 'mauro@test.com' },
+    };
+    const original = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ booking: booked }),
+    }) as unknown as typeof globalThis.fetch;
+
+    try {
+      renderCalendar(twoDays);
+      fireEvent.click(screen.getByRole('button', { name: '09:00' }));
+      fireEvent.change(screen.getByLabelText(/Nombre/), { target: { value: 'Mauro' } });
+      fireEvent.change(screen.getByLabelText(/Apellido/), { target: { value: 'Laime' } });
+      fireEvent.change(screen.getByLabelText(/Email/), { target: { value: 'mauro@test.com' } });
+      fireEvent.change(screen.getByLabelText(/Teléfono/), { target: { value: '1123456789' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Confirmar turno' }));
+
+      expect(await screen.findByText(/¡Gracias por agendar en/)).toBeInTheDocument();
+      // The rendered `days` still list the slot this visitor just took, so the
+      // confirmation itself must not have asked the server for anything yet.
+      expect(refresh).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Agendar otra cita' }));
+    } finally {
+      globalThis.fetch = original;
+    }
+
+    // Leaving a booking has to re-read the window, or the taken slot stays on
+    // screen with a token the server will reject.
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('backs out of the form without re-reading availability when nothing was booked', () => {
+    renderCalendar(twoDays);
+
+    fireEvent.click(screen.getByRole('button', { name: '09:00' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Elegir otro horario' }));
+
+    // Same destination, opposite reason: availability did not change.
+    expect(screen.getByRole('button', { name: '09:30' })).toBeInTheDocument();
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the first open day when a refresh empties the chosen one', () => {
+    const { rerender } = renderCalendar(twoDays);
+    expect(screen.getByTestId('date-card-2026-09-21')).toHaveAttribute('aria-pressed', 'true');
+
+    // What the server returns once this visitor took that day's last slot.
+    rerender(
+      <AvailabilityCalendar
+        days={[
+          { ...twoDays[0], slots: [] },
+          {
+            date: '2026-09-22',
+            day: 2,
+            slots: [
+              {
+                start: '2026-09-22T10:00',
+                end: '2026-09-22T10:40',
+                availabilityToken: 'tok.fresh.sig',
+              },
+            ],
+          },
+        ]}
+        bookingEndpoint={BOOKING_ENDPOINT}
+        shopAddress={null}
+      />
+    );
+
+    // The emptied day is skipped instead of leaving an empty grid under a
+    // heading that promises slots.
+    expect(screen.getByTestId('date-card-2026-09-22')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '10:00' })).toBeInTheDocument();
+    expect(screen.getByText('Elegí un horario')).toBeInTheDocument();
   });
 });

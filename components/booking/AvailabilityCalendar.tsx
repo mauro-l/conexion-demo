@@ -1,6 +1,7 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import { BookingForm } from '~/components/booking/BookingForm';
 import type { AvailabilityDay, AvailabilitySlot } from '~/types/booking';
 
@@ -119,13 +120,27 @@ export function AvailabilityCalendar({
   bookingEndpoint: string;
   shopAddress: string | null;
 }) {
+  const router = useRouter();
+  const [isRefreshing, startRefresh] = useTransition();
   const [selected, setSelected] = useState<CalendarSelection>(() => ({
-    dayIndex: days.findIndex((day) => day.slots.length > 0),
+    dayIndex: -1,
     slot: null,
   }));
   const selectedCardRef = useRef<HTMLButtonElement | null>(null);
 
-  const selectedDay = selected.dayIndex >= 0 ? days[selected.dayIndex] : undefined;
+  /**
+   * Resolved against the CURRENT `days` on every render, where `-1` means "no
+   * explicit pick yet". Both the first paint and the state a finished booking
+   * leaves behind land on the first day that still has slots. That matters
+   * because a booking can empty the day the visitor was looking at — they took
+   * its last slot — and the refreshed prop arrives with that day at zero slots.
+   */
+  const selectedDayIndex =
+    (days[selected.dayIndex]?.slots.length ?? 0) > 0
+      ? selected.dayIndex
+      : days.findIndex((day) => day.slots.length > 0);
+
+  const selectedDay = selectedDayIndex >= 0 ? days[selectedDayIndex] : undefined;
 
   if (!selectedDay) {
     return (
@@ -136,6 +151,19 @@ export function AvailabilityCalendar({
   }
 
   const groups = bucketSlots(selectedDay.slots);
+
+  /**
+   * Starts a fresh booking. The slots on screen were rendered before this
+   * visitor booked, so they still list the slot that was just taken — and that
+   * slot's signed token is still valid, which turns a stale click into a
+   * confusing "that slot is gone" error. Ask the server for the current window
+   * instead of trusting the prop already in hand, and keep the island inert
+   * until it answers, so nothing on screen can be clicked while it is a lie.
+   */
+  function restartBooking() {
+    setSelected({ dayIndex: -1, slot: null });
+    startRefresh(() => router.refresh());
+  }
 
   /**
    * Static calendar-jump affordance: it only brings the selected card into view
@@ -210,7 +238,7 @@ export function AvailabilityCalendar({
         {days.map((day, index) => {
           const { month, dayOfMonth } = dateParts(day.date);
           const disabled = day.slots.length === 0;
-          const isSelected = index === selected.dayIndex;
+          const isSelected = index === selectedDayIndex;
 
           return (
             <button
@@ -219,7 +247,7 @@ export function AvailabilityCalendar({
               type="button"
               className={`date-card${isSelected ? ' selected' : ''}`}
               aria-pressed={isSelected}
-              disabled={disabled}
+              disabled={disabled || isRefreshing}
               onClick={() => setSelected({ dayIndex: index, slot: null })}
               data-testid={`date-card-${day.date}`}
             >
@@ -242,8 +270,15 @@ export function AvailabilityCalendar({
               {formatTime(selected.slot.start)}.
             </p>
           }
-          onBack={() => setSelected({ dayIndex: selected.dayIndex, slot: null })}
+          onBack={() => setSelected({ dayIndex: selectedDayIndex, slot: null })}
+          onRestart={restartBooking}
         />
+      ) : isRefreshing ? (
+        // The replaced list is still the pre-booking one; say so instead of
+        // offering slots the server has already taken.
+        <p className="availability-empty" role="status">
+          Actualizando horarios…
+        </p>
       ) : (
         <>
           <p className="date-label">Elegí un horario</p>
@@ -262,7 +297,7 @@ export function AvailabilityCalendar({
                         key={slot.start}
                         type="button"
                         className="availability-slot"
-                        onClick={() => setSelected({ dayIndex: selected.dayIndex, slot })}
+                        onClick={() => setSelected({ dayIndex: selectedDayIndex, slot })}
                       >
                         {formatTime(slot.start)}
                       </button>

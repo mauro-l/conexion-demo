@@ -73,12 +73,20 @@ export function BookingForm({
   shopAddress,
   recap,
   onBack,
+  onRestart,
 }: {
   endpoint: string;
   token: string;
   shopAddress: string | null;
   recap: ReactNode;
+  /** Backs out before booking: nothing changed, so nothing needs re-reading. */
   onBack: () => void;
+  /**
+   * Leaves a finished booking. Separate from `onBack` because this visitor's
+   * booking just changed availability, so the slot list has to be re-read rather
+   * than restored.
+   */
+  onRestart: () => void;
 }) {
   const [nombre, setNombre] = useState('');
   const [apellido, setApellido] = useState('');
@@ -197,7 +205,7 @@ export function BookingForm({
           Tu turno quedó registrado a nombre de <strong>{booking.customer.name}</strong>. Si
           necesitás cambiarlo, escribinos por WhatsApp.
         </p>
-        <button type="button" className="btn-outline-wide" onClick={onBack}>
+        <button type="button" className="btn-outline-wide" onClick={onRestart}>
           Agendar otra cita
         </button>
       </div>

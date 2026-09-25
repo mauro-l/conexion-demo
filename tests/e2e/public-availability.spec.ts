@@ -398,6 +398,31 @@ test.describe('public availability surface', () => {
     await expect(confirmation).toContainText(service.name);
     await expect(confirmation).toContainText('Prueba E2E');
 
+    /*
+     * The regression this guards: the grid was rendered before this visitor's
+     * booking, so it still offered the slot the booking had just taken, with a
+     * token the server still accepted. Leaving the confirmation has to re-read
+     * the window. Wait for the grid — it replaces the "Actualizando horarios…"
+     * status — so the assertions below run against the refreshed props and not
+     * against the momentary disabled state of the refresh.
+     */
+    await page.getByRole('button', { name: 'Agendar otra cita' }).click();
+    await expect(page.locator('.availability-slots')).toBeVisible();
+
+    const chosenLabel = chosen.start.slice(11, 16);
+    const bookedCard = dateCard(page, target);
+    if (await bookedCard.isEnabled()) {
+      await bookedCard.click();
+      await expect(
+        page
+          .locator('.availability-slots')
+          .getByRole('button', { name: chosenLabel, exact: true })
+      ).toHaveCount(0);
+    } else {
+      // The booking took that day's last slot, which is the other true answer.
+      await expect(bookedCard).toBeDisabled();
+    }
+
     // The real proof: a fresh authoritative read no longer offers that slot,
     // because the booking landed.
     const after = await availability(service.publicServiceToken);
