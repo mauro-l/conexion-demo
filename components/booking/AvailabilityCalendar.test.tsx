@@ -460,6 +460,9 @@ describe('AvailabilityCalendar', () => {
     expect(pill).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('listbox', { name: 'Profesional' })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: /Ana Gómez/ })).toBeInTheDocument();
+    // The alias is a Mercado Pago transfer handle: it must never be rendered
+    // here, so the option carries the barber's name and nothing else.
+    expect(screen.getByRole('option', { name: 'Juan Pérez' })).toHaveTextContent(/^Juan Pérez$/);
 
     fireEvent.click(screen.getByRole('option', { name: /Ana Gómez/ }));
 

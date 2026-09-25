@@ -19,10 +19,7 @@ export type Barberia = {
   instagramUrl: string | null;
 };
 
-/**
- * A barber entry. Retained in the context DTO for Fase 2, but the Fase 1
- * landing does not render a selector or a barber list.
- */
+/** A barber entry as returned by the public context payload. */
 export type Barber = {
   name: string;
   alias: string | null;

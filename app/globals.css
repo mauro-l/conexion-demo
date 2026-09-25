@@ -565,11 +565,6 @@ a {
   font-weight: 600;
 }
 
-.prof-option-alias {
-  color: var(--muted);
-  font-size: 12px;
-}
-
 .prof-avatar {
   flex-shrink: 0;
   width: 26px;

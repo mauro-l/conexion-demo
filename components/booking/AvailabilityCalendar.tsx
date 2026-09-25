@@ -308,7 +308,6 @@ export function AvailabilityCalendar({
                   }}
                 >
                   {barber.name}
-                  {barber.alias ? <span className="prof-option-alias">{barber.alias}</span> : null}
                 </button>
               ))}
             </div>
