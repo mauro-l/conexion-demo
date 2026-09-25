@@ -11,3 +11,9 @@ verify_jwt = false
 
 [functions.public-booking]
 verify_jwt = false
+
+[functions.public-booking-manage]
+verify_jwt = false
+
+[functions.public-booking-cancel]
+verify_jwt = false
