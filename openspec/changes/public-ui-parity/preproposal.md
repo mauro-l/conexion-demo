@@ -107,26 +107,66 @@ Rule for the remaining slices: after any `git stash` experiment or any change to
 stray `next-server` processes and rebuild before trusting an e2e result. Do not diagnose an e2e
 failure from a reused server.
 
-### Open at the time of writing
+### Pipeline status at close of session (2026-09-22)
 
-- Slices 2 and 3 are not implemented. Tasks 2.1-2.4 and 3.1-3.4 remain unchecked.
-- Per-slice commits were authorized after slice 1 was verified, so the `stacked-to-main` chain can
-  become real PRs. Nothing is pushed and no PR exists; those stay separate human decisions.
-- `sdd-verify` runs only after every task is complete, so it is not yet reachable.
+All 11 tasks are implemented, independently verified per slice, and committed locally. Nothing is
+pushed and no PR exists; those stay separate human decisions.
 
-### Deferred findings from the slice-1 verification (not fixed on purpose)
+| Commit | Contents | Authored lines |
+|---|---|---|
+| `9fb096a` | `docs(sdd)`: planning artifacts | — |
+| `5dfe63c` | slice 1, date scroller | 350 |
+| `09a1c25` | slice 2, groups and step chrome (maintainer-approved `size:exception`) | 575 |
+| `a0006f8` | slice 3, tokens, brand copy, disclosure | 352 |
 
-The independent verifier raised three Low-severity items. They are deliberately NOT fixed now,
-because slice 1's native attempt is already settled `passed` and mutating its source would drift
-the recorded evidence revision and force an audited `sdd-attempt reset` before the next acquire.
-They are cosmetic or semantic, so carrying them is cheaper than resetting the ledger.
+Every executable gate passes on a fresh build: `npm test` 80/80, `npm run typecheck`, `npm run lint`,
+`npm run build`, `npm run test:e2e` 15/15.
 
-- Dead CSS: `app/globals.css` groups `.availability-empty, .availability-day-empty`, but no
-  component renders `availability-day-empty` any more — a leftover from the removed vertical list.
+### Verification outcome: FAIL (not yet archived)
+
+`sdd-verify` produced `openspec/changes/public-ui-parity/verify-report.md` (Engram obs #423) with
+verdict **fail**. The reason is narrow and does not concern behavior: 4 of the 13 spec scenarios are
+source-defined but have no runtime-covering test, so they are UNTESTED under the rule that a scenario
+is compliant only when a covering test passed at runtime.
+
+- CRITICAL-1: booking control computed styles (slot `14.5px/600/mono/r12`, group label, pill avatar).
+- CRITICAL-2: the theme toggle's heading-font swap (Playfair Display <-> Oswald).
+- CRITICAL-3: `--fill-strong` defined per theme and resolved by the avatar.
+- CRITICAL-4: theme-scoped shadows and per-element letter-spacing, with no cross-theme leak.
+
+Structural and behavioral requirements are all proven: contract non-drift, the E2 rating exclusion,
+hydration safety, the logo split, the `Hoy ` prefix, the disclosure, and the full booking flow.
+
+Native state: `blockedReasons: ["failed verification evidence is incomplete; rerun SDD
+verification"]`, `archive: blocked`.
+
+**The fix is cheap and the pattern already exists.** `tests/e2e/profile.spec.ts:94-103` already reads
+`getComputedStyle(...)` against the live `--brass` token, so the same technique can assert all four
+items. The alternative — amending the two delta specs to move pure-pixel fidelity to a manual
+acceptance criterion — would deliberately shrink what the change guarantees, and this change exists
+precisely because a previous spec silently lost requirements. Prefer the assertions.
+
+### Deferred findings from the slice verifications (not fixed on purpose)
+
+The independent verifiers raised these. They are cosmetic or semantic, so they were carried rather
+than reopening settled attempts. They are also recorded in `apply-progress.md` and as SUGGESTIONs in
+the verify report.
+
+- Dead CSS: `app/globals.css` groups `.availability-empty, .availability-day-empty`, but no component
+  renders `availability-day-empty` any more — a leftover from the removed vertical list.
 - `AvailabilityCalendar.tsx` attaches `onClick` to every date card, including disabled ones.
-  Activation is blocked by the native `disabled` attribute plus `pointer-events: none`, so it is
-  inert, but the design pin says "no activation handler" and the handler is still there.
-- Date cards use `aria-pressed` as the selection indicator. `aria-pressed` is a toggle-button
-  semantic; a single-select group is more faithfully a `radiogroup`/`radio` or `aria-current`.
-  This one is tied to the unresolved accessibility research lane (picker roles, keyboard behavior,
-  disabled semantics), so it should be settled together with that question, not guessed now.
+  Activation is inert because of the native `disabled` attribute plus `pointer-events: none`, but the
+  design pin says "no activation handler".
+- Date cards use `aria-pressed` as the selection indicator. That is a toggle-button semantic; a
+  single-select group is more faithfully a `radiogroup`/`radio` or `aria-current`. Tied to the
+  accessibility research lane that failed, so it should be settled with that question, not guessed.
+- Slice 3 dropped the old `.ticket-details p { margin: 0 }` reset, so a paragraph inside the expanded
+  detail region regains browser default margins.
+- The brass tail binds through the pre-existing global `.logo span` selector, so the binding is
+  implicit rather than a dedicated class.
+- Hard-coded `Conexión Barbería` literals remain in page metadata (`app/layout.tsx:16`,
+  `app/reservar/page.tsx:19`, `app/page.tsx:28`). Pre-existing and outside this change's edits, but not
+  database-authoritative.
+- `app/not-found.tsx` renders an empty logo slot, because the hard-coded brand literal was removed and
+  no database name exists on an error page. Deliberate and documented, but the brand mark is visually
+  blank on 404s.
