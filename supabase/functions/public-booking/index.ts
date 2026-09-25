@@ -9,6 +9,7 @@ import {
   verifyAvailabilityToken,
   type AvailabilityTokenFailure,
 } from '../_shared/availability-token.ts';
+import { generateManagementToken, hashManagementToken } from '../_shared/management-token.ts';
 
 const FUNCTION_NAME = 'public-booking';
 const MAX_BODY_BYTES = 4096;
@@ -53,6 +54,9 @@ const TOKEN_FAILURE_STATUS: Record<AvailabilityTokenFailure, number> = {
  * minutes. The caller never names the shop, the service or the slot: those
  * claims come out of the verified token, so a tampered body cannot move a
  * booking to a different slot.
+ *
+ * On success, the Edge also mints a one-time management token; only its hash is
+ * sent to Postgres, and the raw token is returned to the visitor once.
  *
  * CORS is not an authorization boundary here. The origin allow-list decides
  * only whether a browser is allowed to read the response, and `Origin` is
@@ -144,6 +148,8 @@ Deno.serve(async (req: Request): Promise<Response> => {
   const { slug, service, start } = verdict.payload;
 
   try {
+    const managementToken = generateManagementToken();
+    const managementTokenHash = await hashManagementToken(managementToken);
     const sb = createServiceClient();
     const { data, error } = await sb.rpc('public_crear_turno', {
       p_slug: slug,
@@ -154,6 +160,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
       p_telefono: telefono,
       p_telefono_raw: telefonoRaw === '' ? telefono : telefonoRaw,
       p_email: email,
+      p_management_token_hash: managementTokenHash,
       p_idempotency_key: idempotencyKey,
     });
     if (error) throw error;
@@ -174,9 +181,24 @@ Deno.serve(async (req: Request): Promise<Response> => {
       );
     }
 
-    return jsonResponse(payload, 201, origin, true, WRITE_METHODS);
-  } catch (err) {
-    console.error(`${FUNCTION_NAME} error`, err);
+    const { managementTokenRegistered, ...publicPayload } = payload;
+    if (managementTokenRegistered === true) {
+      return jsonResponse(
+        {
+          booking: payload.booking,
+          management: { token: managementToken, expiresAt: start },
+        },
+        201,
+        origin,
+        true,
+        WRITE_METHODS
+      );
+    }
+
+    return jsonResponse(publicPayload, 201, origin, true, WRITE_METHODS);
+  } catch {
+    // Do not expose the management-token hash through error details.
+    console.error(`${FUNCTION_NAME} error`);
     return errorResponse('INTERNAL_ERROR', 'Internal error', 500, false, origin, true, WRITE_METHODS);
   }
 });

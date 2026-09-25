@@ -2,8 +2,10 @@
 
 import { useState } from 'react';
 import type { ReactNode } from 'react';
+import Link from 'next/link';
 import { formatDuration, formatPrice } from '~/lib/public-format';
 import { normalizarCelularAR } from '~/lib/telefono';
+import type { ManagementGrant } from '~/types/booking';
 
 /** The public booking DTO the Edge returns. Deliberately free of internal ids. */
 export type Booking = {
@@ -95,6 +97,7 @@ export function BookingForm({
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [booking, setBooking] = useState<Booking | null>(null);
+  const [management, setManagement] = useState<ManagementGrant | null>(null);
 
   const [idempotencyKey] = useState(() =>
     typeof globalThis.crypto?.randomUUID === 'function'
@@ -134,7 +137,9 @@ export function BookingForm({
       const payload: unknown = await response.json().catch(() => null);
       const bookingPayload = (payload as { booking?: Booking } | null)?.booking;
       if (response.ok && bookingPayload) {
+        const managementGrant = (payload as { management?: ManagementGrant } | null)?.management;
         setBooking(bookingPayload);
+        setManagement(managementGrant ?? null);
         return;
       }
 
@@ -202,8 +207,17 @@ export function BookingForm({
          * delivery that will not arrive.
          */}
         <p className="confirm-note">
-          Tu turno quedó registrado a nombre de <strong>{booking.customer.name}</strong>. Si
-          necesitás cambiarlo, escribinos por WhatsApp.
+          Tu turno quedó registrado a nombre de <strong>{booking.customer.name}</strong>.{' '}
+          {management ? (
+            <>
+              Podés{' '}
+              <Link href={`/reserva/gestionar?token=${encodeURIComponent(management.token)}`}>
+                gestionar tu turno
+              </Link>
+              .{' '}
+            </>
+          ) : null}
+          Si necesitás cambiarlo, escribinos por WhatsApp.
         </p>
         <button type="button" className="btn-outline-wide" onClick={onRestart}>
           Agendar otra cita
