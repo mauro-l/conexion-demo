@@ -223,7 +223,7 @@ test.describe('public availability surface', () => {
     expect(bundle).not.toContain(requiredEnv('SUPABASE_ANON_KEY'));
   });
 
-  test('reaches the read-only end of flow without creating, updating, or reserving anything', async ({
+  test('hands the chosen slot to the customer form without creating, updating, or reserving anything', async ({
     page,
   }) => {
     const { services } = await catalog();
@@ -252,10 +252,15 @@ test.describe('public availability surface', () => {
     await expect(page.locator('.availability-slots .group-label').first()).toBeVisible();
     await page.locator('.availability-slots .availability-slot').first().click();
 
-    const final = page.locator('.availability-final');
-    await expect(final).toContainText(dayTitle(target));
-    await expect(final).toContainText('todavía no se reservó nada');
-    await expect(final).toContainText('próxima etapa');
+    // Choosing a slot now opens the customer form. Reaching it is still not a
+    // booking — nothing leaves the browser until the visitor submits, and this
+    // test never submits.
+    await expect(page.locator('.booking-recap')).toContainText(dayTitle(target));
+    await expect(page.getByLabel(/Nombre/)).toBeVisible();
+    await expect(page.getByLabel(/Apellido/)).toBeVisible();
+    await expect(page.getByLabel(/Email/)).toBeVisible();
+    await expect(page.getByLabel(/Teléfono/)).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Confirmar turno' })).toBeEnabled();
 
     // Real evidence of no mutation: a fresh authoritative read still offers the
     // selected slot, the browser issued no state-changing request, and the
@@ -344,5 +349,61 @@ test.describe('public availability surface', () => {
     await expect(card).toBeFocused();
     await expect(page.locator('[role="dialog"]')).toHaveCount(0);
     expect(new URL(page.url()).pathname).toBe('/reservar');
+  });
+
+  test('books the chosen slot from the browser and shows the inline confirmation', async ({
+    page,
+  }) => {
+    // The local edge runtime serves a bundle that `supabase start` builds from
+    // the scratch stack's own functions directory — `edge-runtime start
+    // --main-service`. Copying a new function into that directory is therefore
+    // not enough for it to be served. Skip with the reason instead of failing on
+    // an environment gap that has nothing to do with this change.
+    const endpoint = `${process.env.SUPABASE_URL ?? 'http://127.0.0.1:54321'}/functions/v1/public-booking`;
+    const probe = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    }).catch(() => null);
+    test.skip(
+      probe === null || probe.status === 404,
+      'the local edge runtime does not serve public-booking; re-run `supabase start` in the scratch stack'
+    );
+
+    const { services } = await catalog();
+    const service = services[0];
+    const before = await availability(service.publicServiceToken);
+
+    // A future day keeps the 30-minute lead-time rule out of the way.
+    const target = before.days.slice(1).find((day) => day.slots.length > 0);
+    if (!target) throw new Error('no future day with slots');
+    const chosen = target.slots[0];
+
+    await page.goto(`/reservar?service=${service.publicServiceToken}`);
+    await dateCard(page, target).click();
+    await page.locator('.availability-slots .availability-slot').first().click();
+
+    // The phone is typed the way a person types it, not canonically: normalizing
+    // it is the form's job, and the server rejects anything that is not `+549...`.
+    await page.getByLabel(/Nombre/).fill('Prueba');
+    await page.getByLabel(/Apellido/).fill('E2E');
+    await page.getByLabel(/Email/).fill(`e2e-${Date.now()}@example.com`);
+    await page.getByLabel(/Teléfono/).fill('221 681 9377');
+
+    await page.getByRole('button', { name: 'Confirmar turno' }).click();
+
+    const confirmation = page.locator('.booking-confirm');
+    await expect(confirmation).toBeVisible();
+    await expect(confirmation).toContainText('¡Gracias por agendar');
+    await expect(confirmation).toContainText(service.name);
+    await expect(confirmation).toContainText('Prueba E2E');
+
+    // The real proof: a fresh authoritative read no longer offers that slot,
+    // because the booking landed.
+    const after = await availability(service.publicServiceToken);
+    const stillOffered = after.days.some((dayEntry) =>
+      dayEntry.slots.some((slot) => slot.start === chosen.start)
+    );
+    expect(stillOffered).toBe(false);
   });
 });

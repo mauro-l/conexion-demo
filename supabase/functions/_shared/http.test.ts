@@ -35,10 +35,23 @@ describe('jsonResponse', () => {
   });
 
   it('echoes an allowed origin and ignores an unlisted one', () => {
-    expect(jsonResponse({}, 200, 'http://localhost:4321').headers.get('Access-Control-Allow-Origin')).toBe(
-      'http://localhost:4321'
+    expect(jsonResponse({}, 200, 'http://localhost:3000').headers.get('Access-Control-Allow-Origin')).toBe(
+      'http://localhost:3000'
     );
     expect(jsonResponse({}, 200, 'https://evil.example').headers.get('Access-Control-Allow-Origin')).toBeNull();
+  });
+
+  it('advertises the methods of the function being served', () => {
+    // The reads are GET-only and the booking writer is POST-only. A single shared
+    // list would get one of the two blocked at the browser preflight.
+    expect(
+      jsonResponse({}, 200, 'http://localhost:3000', true, 'POST, OPTIONS').headers.get(
+        'Access-Control-Allow-Methods'
+      )
+    ).toBe('POST, OPTIONS');
+    expect(
+      jsonResponse({}, 200, 'http://localhost:3000').headers.get('Access-Control-Allow-Methods')
+    ).toBe('GET, OPTIONS');
   });
 });
 
