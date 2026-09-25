@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
+import { BookingForm } from '~/components/booking/BookingForm';
 import type { AvailabilityDay, AvailabilitySlot } from '~/types/booking';
 
 /** Weekday labels indexed by the DTO's `day` field (`0=Sunday .. 6=Saturday`). */
@@ -97,18 +98,27 @@ type CalendarSelection = {
 };
 
 /**
- * Read-only availability island: the only Client Component in the booking flow.
+ * Availability island: the only Client Component in the booking flow.
  *
- * It receives an already resolved, ID-free snapshot and owns nothing but local
- * selection state. Reaching the final state performs no fetch and no booking
- * mutation — it is deliberately a dead end until a later stage.
+ * It receives an already resolved, ID-free snapshot and owns the local selection
+ * state. Once a slot is chosen it hands the flow to `BookingForm`, which owns the
+ * customer fields, the POST and the inline result. The island itself still
+ * fetches nothing: the one browser-to-Edge call lives in the form.
  *
  * The initial selection is computed in the `useState` initializer from props, so
  * the server and the client agree before hydration: the first day with slots is
  * selected, or `-1` when the whole window is empty. No `Date` is constructed and
  * no effect runs after mount, so the rendered output is deterministic.
  */
-export function AvailabilityCalendar({ days }: { days: AvailabilityDay[] }) {
+export function AvailabilityCalendar({
+  days,
+  bookingEndpoint,
+  shopAddress,
+}: {
+  days: AvailabilityDay[];
+  bookingEndpoint: string;
+  shopAddress: string | null;
+}) {
   const [selected, setSelected] = useState<CalendarSelection>(() => ({
     dayIndex: days.findIndex((day) => day.slots.length > 0),
     slot: null,
@@ -222,20 +232,18 @@ export function AvailabilityCalendar({ days }: { days: AvailabilityDay[] }) {
       </div>
 
       {selected.slot ? (
-        <div className="availability-final" role="status">
-          <p>
-            Elegiste el {formatDay(selectedDay.date, selectedDay.day)} a las{' '}
-            {formatTime(selected.slot.start)}.
-          </p>
-          <p>La reserva se completa en una próxima etapa: todavía no se reservó nada.</p>
-          <button
-            type="button"
-            className="ticket-cta"
-            onClick={() => setSelected({ dayIndex: selected.dayIndex, slot: null })}
-          >
-            Elegir otro horario
-          </button>
-        </div>
+        <BookingForm
+          endpoint={bookingEndpoint}
+          token={selected.slot.availabilityToken}
+          shopAddress={shopAddress}
+          recap={
+            <p className="booking-recap" role="status">
+              Elegiste el {formatDay(selectedDay.date, selectedDay.day)} a las{' '}
+              {formatTime(selected.slot.start)}.
+            </p>
+          }
+          onBack={() => setSelected({ dayIndex: selected.dayIndex, slot: null })}
+        />
       ) : (
         <>
           <p className="date-label">Elegí un horario</p>

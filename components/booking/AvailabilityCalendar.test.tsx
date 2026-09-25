@@ -74,9 +74,22 @@ const morningOnlyDay: AvailabilityDay[] = [
   },
 ];
 
+/**
+ * The island now also takes the booking endpoint and the shop address, because
+ * choosing a slot hands the flow to `BookingForm`. Tests that only exercise
+ * selection pass a placeholder endpoint: none of them submits.
+ */
+const BOOKING_ENDPOINT = 'https://example.supabase.co/functions/v1/public-booking';
+
+function renderCalendar(days: AvailabilityDay[]) {
+  return render(
+    <AvailabilityCalendar days={days} bookingEndpoint={BOOKING_ENDPOINT} shopAddress={null} />
+  );
+}
+
 describe('AvailabilityCalendar', () => {
   it('renders one date card per returned day with DTO-derived weekday, day and month labels', () => {
-    render(<AvailabilityCalendar days={windowWithClosedLeadingDay} />);
+    renderCalendar(windowWithClosedLeadingDay);
 
     // 14 returned days must produce 14 cards (never assume a fixed window size).
     expect(screen.getAllByRole('button', { name: /^[a-záéíóú]{3} \d{1,2} [a-z]{3}$/ })).toHaveLength(
@@ -95,13 +108,13 @@ describe('AvailabilityCalendar', () => {
   });
 
   it('precedes the scroller with the literal Elegí una fecha label', () => {
-    render(<AvailabilityCalendar days={twoDays} />);
+    renderCalendar(twoDays);
 
     expect(screen.getByText('Elegí una fecha')).toBeInTheDocument();
   });
 
   it('disables exactly the days with zero slots and leaves open days enabled', () => {
-    render(<AvailabilityCalendar days={windowWithClosedLeadingDay} />);
+    renderCalendar(windowWithClosedLeadingDay);
 
     expect(screen.getByTestId('date-card-2026-09-06')).toBeDisabled();
     expect(screen.getByTestId('date-card-2026-09-07')).toBeDisabled();
@@ -110,7 +123,7 @@ describe('AvailabilityCalendar', () => {
   });
 
   it('selects the first open day when the window starts with a closed day', () => {
-    render(<AvailabilityCalendar days={windowWithClosedLeadingDay} />);
+    renderCalendar(windowWithClosedLeadingDay);
 
     expect(screen.getByTestId('date-card-2026-09-06')).not.toHaveAttribute(
       'aria-pressed',
@@ -124,7 +137,7 @@ describe('AvailabilityCalendar', () => {
   });
 
   it('activates another open card and replaces both the selection and the rendered slots', () => {
-    render(<AvailabilityCalendar days={windowWithClosedLeadingDay} />);
+    renderCalendar(windowWithClosedLeadingDay);
 
     // Default selection is the third day (index 2); switch to the fourth (index 3).
     expect(screen.getByRole('button', { name: '09:00' })).toBeInTheDocument();
@@ -144,7 +157,7 @@ describe('AvailabilityCalendar', () => {
   });
 
   it('does not select a disabled card when it is activated', () => {
-    render(<AvailabilityCalendar days={windowWithClosedLeadingDay} />);
+    renderCalendar(windowWithClosedLeadingDay);
 
     fireEvent.click(screen.getByTestId('date-card-2026-09-06'));
 
@@ -156,7 +169,7 @@ describe('AvailabilityCalendar', () => {
   });
 
   it('shows the empty-calendar success state when no day has slots', () => {
-    render(<AvailabilityCalendar days={emptyDays} />);
+    renderCalendar(emptyDays);
 
     const status = screen.getByRole('status');
     expect(status).toHaveTextContent('No hay horarios disponibles por el momento');
@@ -164,22 +177,24 @@ describe('AvailabilityCalendar', () => {
   });
 
   it('treats an empty day list as the same empty-calendar success state', () => {
-    render(<AvailabilityCalendar days={[]} />);
+    renderCalendar([]);
 
     expect(screen.getByRole('status')).toHaveTextContent(
       'No hay horarios disponibles por el momento'
     );
   });
 
-  it('selecting a slot reveals the end-of-flow state naming the day and time', () => {
-    render(<AvailabilityCalendar days={twoDays} />);
+  it('selecting a slot hands the flow to the customer form for that day and time', () => {
+    renderCalendar(twoDays);
 
     fireEvent.click(screen.getByRole('button', { name: '09:30' }));
 
     expect(screen.getByRole('status')).toHaveTextContent('Elegiste el Lunes 21/9 a las 09:30.');
-    expect(
-      screen.getByText('La reserva se completa en una próxima etapa: todavía no se reservó nada.')
-    ).toBeInTheDocument();
+    expect(screen.getByLabelText(/Nombre/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Apellido/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Email/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/Teléfono/)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Confirmar turno' })).toBeInTheDocument();
   });
 
   it('reaching the final state performs no fetch and no booking mutation', () => {
@@ -190,7 +205,7 @@ describe('AvailabilityCalendar', () => {
     globalThis.fetch = fetchSpy;
 
     try {
-      render(<AvailabilityCalendar days={twoDays} />);
+      renderCalendar(twoDays);
       fireEvent.click(screen.getByRole('button', { name: '09:00' }));
       fireEvent.click(screen.getByRole('button', { name: 'Elegir otro horario' }));
       fireEvent.click(screen.getByRole('button', { name: '09:00' }));
@@ -202,7 +217,7 @@ describe('AvailabilityCalendar', () => {
   });
 
   it('lets the visitor go back to the slot grid after reaching the final state', () => {
-    render(<AvailabilityCalendar days={twoDays} />);
+    renderCalendar(twoDays);
 
     fireEvent.click(screen.getByRole('button', { name: '09:00' }));
     fireEvent.click(screen.getByRole('button', { name: 'Elegir otro horario' }));
@@ -212,7 +227,7 @@ describe('AvailabilityCalendar', () => {
   });
 
   it('never renders an internal identifier or the raw availability token', () => {
-    render(<AvailabilityCalendar days={twoDays} />);
+    renderCalendar(twoDays);
 
     const html = document.body.innerHTML;
     expect(html).not.toContain('tok.one.sig');
@@ -243,7 +258,7 @@ describe('AvailabilityCalendar', () => {
   });
 
   it('renders the selected day slots under Mañana, Tarde and Noche with the literal label above', () => {
-    render(<AvailabilityCalendar days={boundaryDay} />);
+    renderCalendar(boundaryDay);
 
     expect(screen.getByText('Elegí un horario', { exact: true })).toBeInTheDocument();
     expect(screen.getAllByText(/^(Mañana|Tarde|Noche)$/).map((node) => node.textContent)).toEqual([
@@ -258,7 +273,7 @@ describe('AvailabilityCalendar', () => {
   });
 
   it('omits a group heading when that bucket has no slots', () => {
-    render(<AvailabilityCalendar days={morningOnlyDay} />);
+    renderCalendar(morningOnlyDay);
 
     expect(screen.getByText('Mañana')).toBeInTheDocument();
     expect(screen.queryByText('Tarde')).toBeNull();

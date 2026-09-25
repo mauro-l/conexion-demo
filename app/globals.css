@@ -722,21 +722,191 @@ a {
   border-color: var(--brass);
 }
 
-.availability-empty,
-.availability-day-empty {
+.availability-empty {
   color: var(--muted);
   font-size: 14px;
 }
 
-.availability-final {
-  margin-top: 22px;
-  padding: 16px;
+/* ============================================================
+   Booking form and inline confirmation
+   Ported from the prototype's .field / .recap-row / .confirm-* rules.
+   Element selectors are scoped under .booking-form so they cannot leak
+   into any other input or label on the page.
+   ============================================================ */
+
+.booking-recap {
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 22px;
+  font-size: 13.5px;
 }
 
-.availability-final p {
-  margin: 0 0 12px;
+.booking-recap p {
+  margin: 0;
+}
+
+.booking-form .form-title {
+  font-family: var(--heading-font);
+  font-weight: 700;
+  font-size: 24px;
+  text-transform: uppercase;
+  margin: 2px 0 6px;
+}
+
+.booking-form .form-subtitle {
+  font-size: 13.5px;
+  color: var(--muted);
+  margin: 0 0 18px;
+  line-height: 1.5;
+}
+
+.booking-form .field {
+  margin-bottom: 16px;
+}
+
+.booking-form .field-row {
+  display: flex;
+  gap: 12px;
+}
+
+.booking-form .field-row .field {
+  flex: 1;
+}
+
+.booking-form label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.booking-form label .req {
+  color: var(--brass-dark);
+}
+
+.booking-form input[type='text'],
+.booking-form input[type='email'],
+.booking-form input[type='tel'] {
+  width: 100%;
+  padding: 13px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  font-size: 15px;
+  color: var(--ink);
+  outline: none;
+}
+
+.booking-form input:focus {
+  border-color: var(--ink);
+}
+
+.booking-form .hint {
+  font-size: 11.5px;
+  color: var(--muted);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+.booking-form .form-error {
+  font-size: 12.5px;
+  color: var(--error);
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+
+.booking-form .form-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.booking-form .form-actions .ticket-cta {
+  flex: 1;
+}
+
+.booking-confirm {
+  text-align: center;
+}
+
+.booking-confirm .check-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  border: 2px solid var(--ink);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  color: var(--ink);
+}
+
+.booking-confirm .confirm-title {
+  font-family: var(--heading-font);
+  font-weight: 700;
+  font-size: 21px;
+  text-transform: uppercase;
+  margin: 0 0 24px;
+  line-height: 1.3;
+}
+
+.booking-confirm .confirm-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 6px 16px;
+  margin-bottom: 22px;
+  text-align: left;
+}
+
+.booking-confirm .confirm-note {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 26px;
+  line-height: 1.5;
+}
+
+.booking-confirm .confirm-note strong {
+  color: var(--ink);
+}
+
+.booking-confirm .btn-outline-wide {
+  width: 100%;
+  background: var(--brass);
+  color: var(--paper);
+  border: none;
+  border-radius: 10px;
+  padding: 13px 26px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.booking-confirm .recap-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 8px 0;
+  font-size: 13.5px;
+}
+
+.booking-confirm .recap-row + .recap-row {
+  border-top: 1px solid var(--line);
+}
+
+.booking-confirm .recap-row .label {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 1px;
+}
+
+.booking-confirm .recap-row .value {
+  font-weight: 600;
 }
 

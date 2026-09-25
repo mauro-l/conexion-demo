@@ -29,8 +29,10 @@ Keeping them here means `supabase db push` sees no local migrations at all.
 | 2 | `phase10_public_landing_details.sql` | `phase10_public_landing_details_rollback.sql` |
 | 3 | `phase11_public_service_token.sql` | `phase11_public_service_token_rollback.sql` |
 | 4 | `phase12_public_availability.sql` | `phase12_public_availability_rollback.sql` |
+| 5 | `phase13_public_crear_turno.sql` | `phase13_public_crear_turno_rollback.sql` |
+| 6 | `phase14_public_crear_turno_email_and_area.sql` | `phase14_public_crear_turno_email_and_area_rollback.sql` |
 
-**Rollbacks run in reverse order: phase12 first, then phase11, phase10, phase9.**
+**Rollbacks run in reverse order: phase14 first, then phase13, phase12, phase11, phase10, phase9.**
 
 ## Dependencies
 
@@ -39,6 +41,13 @@ Keeping them here means `supabase db push` sees no local migrations at all.
   resolve column names at creation time — and then fails at runtime with `42703
   undefined_column`. This happened on the hosted project on 2026-09-22.
 - Rolling back `phase11` while `phase12` is applied breaks the RPC the same way.
+- `phase13` REQUIRES `phase11` for `Servicio.public_service_token` and `phase12` for the
+  `turno_sin_solape`-based availability semantics it re-validates; phase13 also creates
+  `"BookingIdempotency"`.
+- `phase14` REQUIRES `phase13` and REPLACES the function it created. A new parameter cannot be
+  added with `CREATE OR REPLACE` — that would leave the eight-argument version in place as an
+  overload and PostgREST would answer `PGRST203` — so phase14 drops the eight-argument signature
+  and creates the nine-argument one. It also widens `Barberia.codigos_area_permitidos`.
 
 ## Idempotency
 

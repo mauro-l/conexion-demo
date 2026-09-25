@@ -5,13 +5,14 @@ import { AvailabilityCalendar } from '~/components/booking/AvailabilityCalendar'
 import { loadAvailability } from '~/lib/availability.server';
 import { loadPublicPageData, PublicApiError } from '~/lib/public-api.server';
 import { formatDuration, formatPrice } from '~/lib/public-format';
-import { getConfiguredSlug } from '~/lib/site-config.server';
+import { getBookingEndpoint, getConfiguredSlug } from '~/lib/site-config.server';
 
 /**
  * The public slug is server-only configuration, so this route is resolved per
  * request rather than pre-rendered. Availability is read through the uncached
- * server client; the browser never talks to the Edge Function directly. The shop
- * name for the modal crumb comes from the cached public context read.
+ * server client; the one browser-to-Edge call in this app is the booking POST,
+ * which the island makes with the signed slot token. The shop name for the modal
+ * crumb comes from the cached public context read.
  */
 export const dynamic = 'force-dynamic';
 
@@ -95,9 +96,7 @@ export default async function ReservarPage({
       <main className="page-main">
         <p className="eyebrow">Reservar</p>
         <h1 className="hero-title">{availability.service.name}</h1>
-        <p className="tagline">
-          Elegí un horario disponible. La reserva se completa en una próxima etapa.
-        </p>
+        <p className="tagline">Elegí un horario disponible y confirmá tus datos.</p>
 
         <div className="service-chip">
           <span className="name">{availability.service.name}</span>
@@ -108,7 +107,11 @@ export default async function ReservarPage({
           </span>
         </div>
 
-        <AvailabilityCalendar days={availability.days} />
+        <AvailabilityCalendar
+          days={availability.days}
+          bookingEndpoint={getBookingEndpoint()}
+          shopAddress={pageData.context.barberia.address ?? null}
+        />
       </main>
     </>
   );

@@ -28,6 +28,25 @@ export function getConfiguredSlug(): string {
 }
 
 /**
+ * Resolve the public booking endpoint the browser POSTs to.
+ *
+ * The browser has no Supabase URL of its own: every read goes through the server
+ * and this app deliberately exposes no `NEXT_PUBLIC_*` variable. The endpoint is
+ * public information — what gates it is the signed availability token and the
+ * Edge origin allow-list, not secrecy — so the server resolves it and passes it
+ * down as a prop.
+ */
+export function getBookingEndpoint(): string {
+  const raw = process.env.SUPABASE_URL?.trim();
+
+  if (!raw) {
+    throw new Error('SUPABASE_URL is required to build the public booking endpoint.');
+  }
+
+  return `${raw.replace(/\/+$/, '')}/functions/v1/public-booking`;
+}
+
+/**
  * Resolve the public site origin used by `metadataBase` and generated links.
  *
  * Development may fall back to `http://localhost:3000`. Production fails
