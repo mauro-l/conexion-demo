@@ -69,10 +69,26 @@ function availability(service: string): Promise<AvailabilityBody> {
 
 const WEEKDAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
-/** Same text the island renders for the final summary, so the test can target a day. */
+/** Full month labels, spelled out independently of the island's own table. */
+const MONTHS = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+];
+
+/** Same text the island renders in its footer and recap, so the test can target a day. */
 function dayTitle(day: AvailabilityDay): string {
   const [, month, dayOfMonth] = day.date.split('-');
-  return `${WEEKDAYS[day.day]} ${Number(dayOfMonth)}/${Number(month)}`;
+  return `${WEEKDAYS[day.day]} ${Number(dayOfMonth)} de ${MONTHS[Number(month) - 1]}`;
 }
 
 /** The date card for a returned day, addressed by its DTO date string. */
@@ -252,9 +268,16 @@ test.describe('public availability surface', () => {
     await expect(page.locator('.availability-slots .group-label').first()).toBeVisible();
     await page.locator('.availability-slots .availability-slot').first().click();
 
-    // Choosing a slot now opens the customer form. Reaching it is still not a
-    // booking — nothing leaves the browser until the visitor submits, and this
-    // test never submits.
+    // The slot is staged behind the footer, not handed to the form yet: the
+    // visitor has to see which time they are confirming before typing anything.
+    await expect(page.locator('.sticky-summary')).toContainText(dayTitle(target));
+    await expect(page.getByLabel(/Nombre/)).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Siguiente' })).toBeEnabled();
+
+    await page.getByRole('button', { name: 'Siguiente' }).click();
+
+    // Reaching the form is still not a booking — nothing leaves the browser until
+    // the visitor submits, and this test never submits.
     await expect(page.locator('.booking-recap')).toContainText(dayTitle(target));
     await expect(page.getByLabel(/Nombre/)).toBeVisible();
     await expect(page.getByLabel(/Apellido/)).toBeVisible();
@@ -382,6 +405,7 @@ test.describe('public availability surface', () => {
     await page.goto(`/reservar?service=${service.publicServiceToken}`);
     await dateCard(page, target).click();
     await page.locator('.availability-slots .availability-slot').first().click();
+    await page.getByRole('button', { name: 'Siguiente' }).click();
 
     // The phone is typed the way a person types it, not canonically: normalizing
     // it is the form's job, and the server rejects anything that is not `+549...`.
@@ -397,6 +421,31 @@ test.describe('public availability surface', () => {
     await expect(confirmation).toContainText('¡Gracias por agendar');
     await expect(confirmation).toContainText(service.name);
     await expect(confirmation).toContainText('Prueba E2E');
+
+    /*
+     * The regression this guards: the grid was rendered before this visitor's
+     * booking, so it still offered the slot the booking had just taken, with a
+     * token the server still accepted. Leaving the confirmation has to re-read
+     * the window. Wait for the grid — it replaces the "Actualizando horarios…"
+     * status — so the assertions below run against the refreshed props and not
+     * against the momentary disabled state of the refresh.
+     */
+    await page.getByRole('button', { name: 'Agendar otra cita' }).click();
+    await expect(page.locator('.availability-slots')).toBeVisible();
+
+    const chosenLabel = chosen.start.slice(11, 16);
+    const bookedCard = dateCard(page, target);
+    if (await bookedCard.isEnabled()) {
+      await bookedCard.click();
+      await expect(
+        page
+          .locator('.availability-slots')
+          .getByRole('button', { name: chosenLabel, exact: true })
+      ).toHaveCount(0);
+    } else {
+      // The booking took that day's last slot, which is the other true answer.
+      await expect(bookedCard).toBeDisabled();
+    }
 
     // The real proof: a fresh authoritative read no longer offers that slot,
     // because the booking landed.

@@ -700,18 +700,22 @@ a {
   margin: 0 0 8px;
 }
 
+/* One full-width row per time, the way the prototype stacks its `.time-slot`. */
 .time-group-slots {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  flex-direction: column;
 }
 
 .availability-slot {
+  display: block;
+  width: 100%;
+  text-align: left;
   background: var(--card);
   color: var(--ink);
   border: 1px solid var(--line);
   border-radius: 12px;
-  padding: 8px 14px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
   font-family: var(--mono-font);
   font-size: 14.5px;
   font-weight: 600;
@@ -722,9 +726,90 @@ a {
   border-color: var(--brass);
 }
 
+.availability-slot.selected {
+  background: var(--brass);
+  border-color: var(--brass);
+  color: var(--paper);
+}
+
 .availability-empty {
   color: var(--muted);
   font-size: 14px;
+}
+
+/* The island owns the bottom of the viewport while its footer is up. */
+.availability.has-sticky-bar {
+  padding-bottom: 92px;
+}
+
+/* ============================================================
+   Sticky action bar
+   Ported from the prototype's `.sticky-bar`: it holds the staged date
+   and time above the step's primary call to action, which stays
+   disabled until a time is staged.
+   ============================================================ */
+
+.sticky-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 12px 18px calc(12px + env(safe-area-inset-bottom));
+  background: var(--paper);
+  border-top: 1px solid var(--line);
+}
+
+.sticky-summary {
+  flex: 1;
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: var(--muted);
+}
+
+.sticky-summary strong {
+  display: block;
+  color: var(--ink);
+  font-size: 13.5px;
+}
+
+.btn-primary {
+  flex: 1;
+  background: var(--brass);
+  color: var(--paper);
+  border: none;
+  border-radius: 10px;
+  padding: 13px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-primary:disabled {
+  background: var(--disabled);
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+.btn-primary:not(:disabled):active {
+  transform: scale(0.98);
+}
+
+.btn-secondary {
+  flex: 0 0 auto;
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--ink);
+  border-radius: 10px;
+  padding: 13px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 /* ============================================================
@@ -733,6 +818,35 @@ a {
    Element selectors are scoped under .booking-form so they cannot leak
    into any other input or label on the page.
    ============================================================ */
+
+/*
+ * The prototype's phone field: the country prefix is its own standing box
+ * beside the input, not a value inside it. Keeping it out of the input is what
+ * lets the field hold only the digits the visitor knows by heart.
+ */
+.phone-field {
+  display: flex;
+  gap: 8px;
+}
+
+.phone-field input {
+  flex: 1;
+  min-width: 0;
+}
+
+.phone-prefix {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  font-size: 14.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
 
 .booking-recap {
   background: var(--card);

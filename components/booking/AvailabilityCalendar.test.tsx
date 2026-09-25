@@ -1,7 +1,23 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { useRouter } from 'next/navigation';
 import { AvailabilityCalendar, bucketSlots } from '~/components/booking/AvailabilityCalendar';
 import type { AvailabilityDay, AvailabilitySlot } from '~/types/booking';
+import type { Booking } from '~/components/booking/BookingForm';
+
+/**
+ * The island reads `useRouter().refresh()` when a booking ends, so it needs a
+ * router in scope and the tests need a handle on it. The factory builds the spy
+ * itself: referencing an outer variable there would read it before it exists.
+ */
+vi.mock('next/navigation', () => ({ useRouter: vi.fn() }));
+
+const refresh = vi.fn();
+
+beforeEach(() => {
+  refresh.mockClear();
+  vi.mocked(useRouter).mockReturnValue({ refresh } as unknown as ReturnType<typeof useRouter>);
+});
 
 const twoDays: AvailabilityDay[] = [
   {
@@ -184,17 +200,64 @@ describe('AvailabilityCalendar', () => {
     );
   });
 
-  it('selecting a slot hands the flow to the customer form for that day and time', () => {
+  it('stages the chosen slot in the footer without opening the form', () => {
     renderCalendar(twoDays);
 
     fireEvent.click(screen.getByRole('button', { name: '09:30' }));
 
-    expect(screen.getByRole('status')).toHaveTextContent('Elegiste el Lunes 21/9 a las 09:30.');
+    // The staged state names the day and the time, and the form is not reachable
+    // until the visitor says so.
+    expect(screen.getByRole('status')).toHaveTextContent('Lunes 21 de septiembre');
+    expect(screen.getByRole('status')).toHaveTextContent('09:30 hs');
+    expect(screen.queryByLabelText(/Nombre/)).toBeNull();
+    expect(screen.getByRole('button', { name: 'Siguiente' })).toBeEnabled();
+  });
+
+  it('disables the call to action until a time is staged', () => {
+    renderCalendar(twoDays);
+
+    expect(screen.getByRole('button', { name: 'Siguiente' })).toBeDisabled();
+    expect(screen.getByRole('status')).toHaveTextContent('Elegí fecha y hora para continuar');
+
+    fireEvent.click(screen.getByRole('button', { name: '09:00' }));
+
+    expect(screen.getByRole('button', { name: 'Siguiente' })).toBeEnabled();
+  });
+
+  it('marks the staged slot and only that one', () => {
+    renderCalendar(twoDays);
+
+    fireEvent.click(screen.getByRole('button', { name: '09:00' }));
+
+    expect(screen.getByRole('button', { name: '09:00' })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '09:30' })).toHaveAttribute('aria-pressed', 'false');
+  });
+
+  it('hands the staged slot to the customer form only after Siguiente', () => {
+    renderCalendar(twoDays);
+
+    fireEvent.click(screen.getByRole('button', { name: '09:30' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }));
+
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Elegiste el Lunes 21 de septiembre a las 09:30.'
+    );
     expect(screen.getByLabelText(/Nombre/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Apellido/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Email/)).toBeInTheDocument();
     expect(screen.getByLabelText(/Teléfono/)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Confirmar turno' })).toBeInTheDocument();
+  });
+
+  it('shows the standing country prefix beside the phone field', () => {
+    renderCalendar(twoDays);
+
+    fireEvent.click(screen.getByRole('button', { name: '09:00' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }));
+
+    expect(screen.getByText('🇦🇷 +54')).toBeInTheDocument();
+    // The prefix is not a value inside the field: the field holds what was typed.
+    expect(screen.getByLabelText(/Teléfono/)).toHaveValue('');
   });
 
   it('reaching the final state performs no fetch and no booking mutation', () => {
@@ -207,23 +270,28 @@ describe('AvailabilityCalendar', () => {
     try {
       renderCalendar(twoDays);
       fireEvent.click(screen.getByRole('button', { name: '09:00' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }));
       fireEvent.click(screen.getByRole('button', { name: 'Elegir otro horario' }));
       fireEvent.click(screen.getByRole('button', { name: '09:00' }));
     } finally {
       globalThis.fetch = original;
     }
 
-    expect(screen.getByRole('status')).toHaveTextContent('Elegiste el Lunes 21/9 a las 09:00.');
+    expect(screen.getByRole('status')).toHaveTextContent('09:00 hs');
   });
 
-  it('lets the visitor go back to the slot grid after reaching the final state', () => {
+  it('returns to the slot grid with the staged time still named', () => {
     renderCalendar(twoDays);
 
     fireEvent.click(screen.getByRole('button', { name: '09:00' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }));
     fireEvent.click(screen.getByRole('button', { name: 'Elegir otro horario' }));
 
     expect(screen.getByRole('button', { name: '09:30' })).toBeInTheDocument();
     expect(screen.queryByText(/Elegiste el/)).toBeNull();
+    // Backing out keeps the staged slot, so the footer still names it.
+    expect(screen.getByRole('status')).toHaveTextContent('09:00 hs');
+    expect(screen.getByRole('button', { name: 'Siguiente' })).toBeEnabled();
   });
 
   it('never renders an internal identifier or the raw availability token', () => {
@@ -278,5 +346,94 @@ describe('AvailabilityCalendar', () => {
     expect(screen.getByText('Mañana')).toBeInTheDocument();
     expect(screen.queryByText('Tarde')).toBeNull();
     expect(screen.queryByText('Noche')).toBeNull();
+  });
+
+  it('re-reads availability when a finished booking starts another appointment', async () => {
+    const booked: Booking = {
+      start: '2026-09-21T09:00',
+      end: '2026-09-21T09:40',
+      durationMinutes: 40,
+      price: 8000,
+      status: 'confirmado',
+      origin: 'web',
+      serviceName: 'Corte clásico',
+      barberName: 'Tero Jr',
+      shopName: 'Conexión Barbería',
+      customer: { name: 'Mauro', phone: '+5491123456789', email: 'mauro@test.com' },
+    };
+    const original = globalThis.fetch;
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ booking: booked }),
+    }) as unknown as typeof globalThis.fetch;
+
+    try {
+      renderCalendar(twoDays);
+      fireEvent.click(screen.getByRole('button', { name: '09:00' }));
+      fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }));
+      fireEvent.change(screen.getByLabelText(/Nombre/), { target: { value: 'Mauro' } });
+      fireEvent.change(screen.getByLabelText(/Apellido/), { target: { value: 'Laime' } });
+      fireEvent.change(screen.getByLabelText(/Email/), { target: { value: 'mauro@test.com' } });
+      fireEvent.change(screen.getByLabelText(/Teléfono/), { target: { value: '1123456789' } });
+      fireEvent.click(screen.getByRole('button', { name: 'Confirmar turno' }));
+
+      expect(await screen.findByText(/¡Gracias por agendar en/)).toBeInTheDocument();
+      // The rendered `days` still list the slot this visitor just took, so the
+      // confirmation itself must not have asked the server for anything yet.
+      expect(refresh).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByRole('button', { name: 'Agendar otra cita' }));
+    } finally {
+      globalThis.fetch = original;
+    }
+
+    // Leaving a booking has to re-read the window, or the taken slot stays on
+    // screen with a token the server will reject.
+    expect(refresh).toHaveBeenCalledTimes(1);
+  });
+
+  it('backs out of the form without re-reading availability when nothing was booked', () => {
+    renderCalendar(twoDays);
+
+    fireEvent.click(screen.getByRole('button', { name: '09:00' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Elegir otro horario' }));
+
+    // Same destination, opposite reason: availability did not change.
+    expect(screen.getByRole('button', { name: '09:30' })).toBeInTheDocument();
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('falls back to the first open day when a refresh empties the chosen one', () => {
+    const { rerender } = renderCalendar(twoDays);
+    expect(screen.getByTestId('date-card-2026-09-21')).toHaveAttribute('aria-pressed', 'true');
+
+    // What the server returns once this visitor took that day's last slot.
+    rerender(
+      <AvailabilityCalendar
+        days={[
+          { ...twoDays[0], slots: [] },
+          {
+            date: '2026-09-22',
+            day: 2,
+            slots: [
+              {
+                start: '2026-09-22T10:00',
+                end: '2026-09-22T10:40',
+                availabilityToken: 'tok.fresh.sig',
+              },
+            ],
+          },
+        ]}
+        bookingEndpoint={BOOKING_ENDPOINT}
+        shopAddress={null}
+      />
+    );
+
+    // The emptied day is skipped instead of leaving an empty grid under a
+    // heading that promises slots.
+    expect(screen.getByTestId('date-card-2026-09-22')).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: '10:00' })).toBeInTheDocument();
+    expect(screen.getByText('Elegí un horario')).toBeInTheDocument();
   });
 });
