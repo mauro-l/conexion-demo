@@ -1,21 +1,13 @@
+import Link from 'next/link';
+import { ServiceDisclosure } from '~/components/public/ServiceDisclosure';
+import { formatDuration, formatPrice } from '~/lib/public-format';
 import type { Service } from '~/types/public';
-
-function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes} min`;
-  const hours = Math.floor(minutes / 60);
-  const remainder = minutes % 60;
-  if (remainder === 0) return `${hours} h`;
-  return `${hours} h ${remainder} min`;
-}
-
-function formatPrice(price: number): string {
-  return `$${price.toLocaleString('es-AR')}`;
-}
 
 /**
  * Database-authoritative service catalog. Descriptions are rendered only when
- * the DTO supplies them; there are no fabricated fallbacks. The CTA is inert:
- * Fase 1 does not book and `/reservar` is not a route.
+ * the DTO supplies them; there are no fabricated fallbacks. Each CTA is a link
+ * to the read-only booking entry point, and the list is keyed by the opaque
+ * public token because service names are not guaranteed unique.
  */
 export function ServiceCatalog({ services }: { services: Service[] }) {
   return (
@@ -23,16 +15,10 @@ export function ServiceCatalog({ services }: { services: Service[] }) {
       <h2 className="section-title">Servicios</h2>
       <div className="ticket-list">
         {services.map((service) => (
-          <article className="ticket" key={service.name}>
-            <div className="ticket-main">
+          <article className="ticket" key={service.publicServiceToken}>
+            <ServiceDisclosure description={service.description}>
               <h3 className="ticket-name">{service.name}</h3>
-              {service.description ? (
-                <details className="ticket-details">
-                  <summary>Qué incluye</summary>
-                  <p>{service.description}</p>
-                </details>
-              ) : null}
-            </div>
+            </ServiceDisclosure>
             <div className="ticket-perf" />
             <div className="ticket-footer">
               <span className="ticket-meta">
@@ -40,9 +26,12 @@ export function ServiceCatalog({ services }: { services: Service[] }) {
                 <span className="dot">·</span>
                 <span className="price">{formatPrice(service.price)}</span>
               </span>
-              <button type="button" className="ticket-cta">
+              <Link
+                href={`/reservar?service=${encodeURIComponent(service.publicServiceToken)}`}
+                className="ticket-cta"
+              >
                 Reservar
-              </button>
+              </Link>
             </div>
           </article>
         ))}

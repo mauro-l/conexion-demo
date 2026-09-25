@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.public-catalog]
 verify_jwt = false
+
+[functions.public-availability]
+verify_jwt = false

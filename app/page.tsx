@@ -43,7 +43,7 @@ export default async function PublicLandingPage() {
 
   return (
     <>
-      <PublicHeader />
+      <PublicHeader name={context.barberia.name} />
       <PublicHero barberia={context.barberia}>
         <PublicInfo barberia={context.barberia} />
       </PublicHero>

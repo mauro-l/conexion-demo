@@ -3,8 +3,9 @@
  *
  * These mirror the payloads returned by the `public-context` and
  * `public-catalog` Edge Functions (see phase10_public_landing_details.sql).
- * They are the only shape the landing may render; no internal identifiers,
- * no `publicToken`, no storage-shape leakage.
+ * They are the only shape the landing may render; no internal identifiers and
+ * no storage-shape leakage. The catalog's `publicServiceToken` is an opaque,
+ * non-internal handle used only to address the public availability read.
  */
 
 /** A barbershop's public landing details. */
@@ -35,6 +36,7 @@ export type Context = {
 };
 
 export type Service = {
+  publicServiceToken: string;
   name: string;
   durationMinutes: number;
   price: number;

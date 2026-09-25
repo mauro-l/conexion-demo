@@ -29,7 +29,15 @@ const fullContext: Context = {
 };
 
 const fullCatalog: Catalog = {
-  services: [{ name: 'Corte', durationMinutes: 40, price: 23000, description: 'Incluye' }],
+  services: [
+    {
+      publicServiceToken: 'a1b2c3d4e5f60718293a4b5c6d7e8f90',
+      name: 'Corte',
+      durationMinutes: 40,
+      price: 23000,
+      description: 'Incluye',
+    },
+  ],
 };
 
 function startMock(handler: (req: IncomingMessage, res: ServerResponse) => void) {
@@ -70,13 +78,17 @@ describe('createPublicApiClient', () => {
     await mock.close();
   });
 
-  it('returns the catalog DTO with numeric duration and price', async () => {
+  it('returns the catalog DTO with exactly the five public fields, token included', async () => {
     const mock = await startMock((_req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify(fullCatalog));
     });
     const client = createPublicApiClient({ baseUrl: mock.url });
-    await expect(client.catalog('conexion-barberia')).resolves.toEqual(fullCatalog);
+    const catalog = await client.catalog('conexion-barberia');
+    expect(catalog).toEqual(fullCatalog);
+    expect(Object.keys(catalog.services[0]).sort()).toEqual(
+      ['description', 'durationMinutes', 'name', 'price', 'publicServiceToken'].sort()
+    );
     await mock.close();
   });
 
@@ -156,6 +168,21 @@ describe('createPublicApiClient', () => {
     const mock = await startMock((_req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ services: [{ name: 'Corte', durationMinutes: '40' }] }));
+    });
+    const client = createPublicApiClient({ baseUrl: mock.url });
+    const error = await client.catalog('conexion-barberia').catch((e: unknown) => e);
+    expect((error as PublicApiError).code).toBe('INVALID_RESPONSE');
+    await mock.close();
+  });
+
+  it('rejects a catalog service without the opaque public token', async () => {
+    const mock = await startMock((_req, res) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(
+        JSON.stringify({
+          services: [{ name: 'Corte', durationMinutes: 40, price: 23000, description: null }],
+        })
+      );
     });
     const client = createPublicApiClient({ baseUrl: mock.url });
     const error = await client.catalog('conexion-barberia').catch((e: unknown) => e);
