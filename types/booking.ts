@@ -34,3 +34,23 @@ export type Availability = {
   service: AvailabilityService;
   days: AvailabilityDay[];
 };
+
+/** The ID-free booking summary returned by the public management endpoints. */
+export type ManagedBooking = {
+  start: string;
+  end: string;
+  durationMinutes: number;
+  price: number;
+  status: 'pendiente' | 'confirmado' | 'completado' | 'cancelado' | 'ausente';
+  origin: string;
+  serviceName: string;
+  barberName: string;
+  shopName: string;
+  canCancel: boolean;
+};
+
+/** A one-time grant to manage a newly created booking. */
+export type ManagementGrant = {
+  token: string;
+  expiresAt: string;
+};

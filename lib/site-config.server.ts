@@ -46,6 +46,17 @@ export function getBookingEndpoint(): string {
   return `${raw.replace(/\/+$/, '')}/functions/v1/public-booking`;
 }
 
+/** Resolve the public cancellation endpoint the browser POSTs to. */
+export function getBookingCancelEndpoint(): string {
+  const raw = process.env.SUPABASE_URL?.trim();
+
+  if (!raw) {
+    throw new Error('SUPABASE_URL is required to build the public booking cancellation endpoint.');
+  }
+
+  return `${raw.replace(/\/+$/, '')}/functions/v1/public-booking-cancel`;
+}
+
 /**
  * Resolve the public site origin used by `metadataBase` and generated links.
  *

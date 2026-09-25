@@ -19,3 +19,10 @@ export function formatDuration(minutes: number): string {
 export function formatPrice(price: number): string {
   return `$${price.toLocaleString('es-AR')}`;
 }
+
+/** Formats a local-naive DTO date-time without constructing a `Date`. */
+export function formatLocalDateTime(localDateTime: string): string {
+  const [date, time = ''] = localDateTime.split('T');
+  const [, month, day] = date.split('-');
+  return `${Number(day)}/${Number(month)} a las ${time.slice(0, 5)}`;
+}
