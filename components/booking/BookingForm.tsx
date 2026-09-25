@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { formatDuration, formatPrice } from '~/lib/public-format';
-import { formatearTelefono, normalizarCelularAR } from '~/lib/telefono';
+import { normalizarCelularAR } from '~/lib/telefono';
 
 /** The public booking DTO the Edge returns. Deliberately free of internal ids. */
 export type Booking = {
@@ -280,20 +280,24 @@ export function BookingForm({
            * normal way this number arrives. `inputMode="tel"` gives a keypad with
            * `+`; `autoComplete="tel"` is deliberately absent because the browser
            * would then fill in the visitor's own number.
+           *
+           * The country code is a standing prefix beside the input, the way the
+           * prototype shows it, so the field itself holds only the digits. That is
+           * also why nothing rewrites the value on blur: a `+54 9` rewrite would
+           * now render twice, once in the prefix and once inside the field.
            */}
-          <input
-            id="booking-telefono"
-            type="tel"
-            inputMode="tel"
-            value={telefono}
-            onChange={(event) => setTelefono(event.target.value)}
-            onBlur={() => {
-              const canonical = normalizarCelularAR(telefono);
-              if (canonical) setTelefono(formatearTelefono(canonical));
-            }}
-            placeholder="1123456789"
-            required
-          />
+          <div className="phone-field">
+            <span className="phone-prefix">🇦🇷 +54</span>
+            <input
+              id="booking-telefono"
+              type="tel"
+              inputMode="tel"
+              value={telefono}
+              onChange={(event) => setTelefono(event.target.value)}
+              placeholder="1123456789"
+              required
+            />
+          </div>
           <p className="hint">Con código de área, sin el 0 y sin el 15. Ej: 1123456789</p>
         </div>
 

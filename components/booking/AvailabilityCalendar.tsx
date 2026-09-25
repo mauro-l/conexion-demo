@@ -31,6 +31,22 @@ const MONTHS_SHORT = [
   'dic',
 ];
 
+/** Full month labels, indexed the same way as the short ones. */
+const MONTHS = [
+  'enero',
+  'febrero',
+  'marzo',
+  'abril',
+  'mayo',
+  'junio',
+  'julio',
+  'agosto',
+  'septiembre',
+  'octubre',
+  'noviembre',
+  'diciembre',
+];
+
 /** Time-of-day groups, in the order the prototype renders them. */
 export type TimeBucket = 'Mañana' | 'Tarde' | 'Noche';
 
@@ -89,13 +105,19 @@ function dateParts(date: string): { month: number; dayOfMonth: number } {
  */
 function formatDay(date: string, day: number): string {
   const { month, dayOfMonth } = dateParts(date);
-  return `${WEEKDAYS[day] ?? ''} ${dayOfMonth}/${month}`;
+  return `${WEEKDAYS[day] ?? ''} ${dayOfMonth} de ${MONTHS[month - 1] ?? ''}`;
 }
 
-/** Local selection: an indexed day plus its chosen slot, or `null` until a slot is picked. */
+/**
+ * Local selection: an indexed day, the slot staged on it, and whether the flow
+ * has moved on to the form. A staged slot is not a booking yet — the footer's
+ * call to action is what opens the form, so the visitor sees which time they are
+ * about to confirm before they type anything into it.
+ */
 type CalendarSelection = {
   dayIndex: number;
   slot: AvailabilitySlot | null;
+  formOpen: boolean;
 };
 
 /**
@@ -125,6 +147,7 @@ export function AvailabilityCalendar({
   const [selected, setSelected] = useState<CalendarSelection>(() => ({
     dayIndex: -1,
     slot: null,
+    formOpen: false,
   }));
   const selectedCardRef = useRef<HTMLButtonElement | null>(null);
 
@@ -152,6 +175,9 @@ export function AvailabilityCalendar({
 
   const groups = bucketSlots(selectedDay.slots);
 
+  /** The form is only reachable through the footer's call to action. */
+  const formOpen = selected.formOpen && selected.slot !== null;
+
   /**
    * Starts a fresh booking. The slots on screen were rendered before this
    * visitor booked, so they still list the slot that was just taken — and that
@@ -161,7 +187,7 @@ export function AvailabilityCalendar({
    * until it answers, so nothing on screen can be clicked while it is a lie.
    */
   function restartBooking() {
-    setSelected({ dayIndex: -1, slot: null });
+    setSelected({ dayIndex: -1, slot: null, formOpen: false });
     startRefresh(() => router.refresh());
   }
 
@@ -177,7 +203,7 @@ export function AvailabilityCalendar({
   }
 
   return (
-    <div className="availability">
+    <div className={`availability${formOpen ? '' : ' has-sticky-bar'}`}>
       <div className="prof-row">
         {/*
          * Exactly one professional affordance, always "Cualquier profesional".
@@ -248,7 +274,7 @@ export function AvailabilityCalendar({
               className={`date-card${isSelected ? ' selected' : ''}`}
               aria-pressed={isSelected}
               disabled={disabled || isRefreshing}
-              onClick={() => setSelected({ dayIndex: index, slot: null })}
+              onClick={() => setSelected({ dayIndex: index, slot: null, formOpen: false })}
               data-testid={`date-card-${day.date}`}
             >
               <span className="dow">{WEEKDAYS_SHORT[day.day] ?? ''}</span>
@@ -259,7 +285,11 @@ export function AvailabilityCalendar({
         })}
       </div>
 
-      {selected.slot ? (
+      {/*
+       * `onBack` restores the staged slot rather than clearing it, so leaving the
+       * form returns the visitor to a footer that still names the time.
+       */}
+      {formOpen && selected.slot ? (
         <BookingForm
           endpoint={bookingEndpoint}
           token={selected.slot.availabilityToken}
@@ -270,7 +300,9 @@ export function AvailabilityCalendar({
               {formatTime(selected.slot.start)}.
             </p>
           }
-          onBack={() => setSelected({ dayIndex: selectedDayIndex, slot: null })}
+          onBack={() =>
+            setSelected({ dayIndex: selectedDayIndex, slot: selected.slot, formOpen: false })
+          }
           onRestart={restartBooking}
         />
       ) : isRefreshing ? (
@@ -292,22 +324,58 @@ export function AvailabilityCalendar({
                 <div className="time-group" key={bucket}>
                   <p className="group-label">{bucket}</p>
                   <div className="time-group-slots">
-                    {slots.map((slot) => (
-                      <button
-                        key={slot.start}
-                        type="button"
-                        className="availability-slot"
-                        onClick={() => setSelected({ dayIndex: selectedDayIndex, slot })}
-                      >
-                        {formatTime(slot.start)}
-                      </button>
-                    ))}
+                    {slots.map((slot) => {
+                      const staged = selected.slot?.start === slot.start;
+                      return (
+                        <button
+                          key={slot.start}
+                          type="button"
+                          className={`availability-slot${staged ? ' selected' : ''}`}
+                          aria-pressed={staged}
+                          onClick={() =>
+                            setSelected({ dayIndex: selectedDayIndex, slot, formOpen: false })
+                          }
+                        >
+                          {formatTime(slot.start)}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               );
             })}
           </div>
         </>
+      )}
+
+      {/*
+       * The staged choice and the step's only call to action, the way the
+       * prototype holds them: fixed to the bottom, disabled copy until a time is
+       * staged, and gone once the form is open so it cannot be pressed twice.
+       */}
+      {formOpen ? null : (
+        <div className="sticky-bar">
+          <p className="sticky-summary" role="status">
+            {selected.slot ? (
+              <>
+                <strong>{formatDay(selectedDay.date, selectedDay.day)}</strong>
+                {formatTime(selected.slot.start)} hs
+              </>
+            ) : (
+              'Elegí fecha y hora para continuar'
+            )}
+          </p>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={selected.slot === null}
+            onClick={() =>
+              setSelected({ dayIndex: selectedDayIndex, slot: selected.slot, formOpen: true })
+            }
+          >
+            Siguiente
+          </button>
+        </div>
       )}
     </div>
   );
