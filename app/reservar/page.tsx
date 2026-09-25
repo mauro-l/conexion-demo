@@ -109,6 +109,7 @@ export default async function ReservarPage({
 
         <AvailabilityCalendar
           days={availability.days}
+          barbers={pageData.context.barbers}
           bookingEndpoint={getBookingEndpoint()}
           shopAddress={pageData.context.barberia.address ?? null}
         />

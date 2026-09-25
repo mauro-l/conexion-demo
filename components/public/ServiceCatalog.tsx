@@ -1,13 +1,15 @@
 import Link from 'next/link';
-import { ServiceDisclosure } from '~/components/public/ServiceDisclosure';
 import { formatDuration, formatPrice } from '~/lib/public-format';
 import type { Service } from '~/types/public';
 
 /**
- * Database-authoritative service catalog. Descriptions are rendered only when
- * the DTO supplies them; there are no fabricated fallbacks. Each CTA is a link
- * to the read-only booking entry point, and the list is keyed by the opaque
- * public token because service names are not guaranteed unique.
+ * Database-authoritative service catalog. Each CTA is a link to the read-only
+ * booking entry point, and the list is keyed by the opaque public token because
+ * service names are not guaranteed unique.
+ *
+ * The service description is deliberately not rendered: this demo version does
+ * not surface "qué incluye". The DTO still carries it, so the disclosure can
+ * come back without a data change.
  */
 export function ServiceCatalog({ services }: { services: Service[] }) {
   return (
@@ -16,9 +18,9 @@ export function ServiceCatalog({ services }: { services: Service[] }) {
       <div className="ticket-list">
         {services.map((service) => (
           <article className="ticket" key={service.publicServiceToken}>
-            <ServiceDisclosure description={service.description}>
+            <div className="ticket-main">
               <h3 className="ticket-name">{service.name}</h3>
-            </ServiceDisclosure>
+            </div>
             <div className="ticket-perf" />
             <div className="ticket-footer">
               <span className="ticket-meta">

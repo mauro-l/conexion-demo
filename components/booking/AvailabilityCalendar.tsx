@@ -1,9 +1,10 @@
 'use client';
 
-import { useRef, useState, useTransition } from 'react';
+import { useEffect, useId, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { BookingForm } from '~/components/booking/BookingForm';
 import type { AvailabilityDay, AvailabilitySlot } from '~/types/booking';
+import type { Barber } from '~/types/public';
 
 /** Weekday labels indexed by the DTO's `day` field (`0=Sunday .. 6=Saturday`). */
 const WEEKDAYS = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
@@ -51,6 +52,9 @@ const MONTHS = [
 export type TimeBucket = 'Mañana' | 'Tarde' | 'Noche';
 
 const TIME_BUCKETS: readonly TimeBucket[] = ['Mañana', 'Tarde', 'Noche'];
+
+/** The no-selection label; also the first option of the professional listbox. */
+const ANY_PROFESSIONAL = 'Cualquier profesional';
 
 /** The local time part of a DTO date-time string, without constructing a `Date`. */
 function timePart(localDateTime: string): string {
@@ -135,10 +139,12 @@ type CalendarSelection = {
  */
 export function AvailabilityCalendar({
   days,
+  barbers,
   bookingEndpoint,
   shopAddress,
 }: {
   days: AvailabilityDay[];
+  barbers: Barber[];
   bookingEndpoint: string;
   shopAddress: string | null;
 }) {
@@ -150,6 +156,35 @@ export function AvailabilityCalendar({
     formOpen: false,
   }));
   const selectedCardRef = useRef<HTMLButtonElement | null>(null);
+
+  /**
+   * Professional selection. `null` is "Cualquier profesional". The list is
+   * server-owned, so the index is the stable identity here; the booking RPC
+   * still resolves the barber from the chosen service.
+   */
+  const [professional, setProfessional] = useState<number | null>(null);
+  const [professionalOpen, setProfessionalOpen] = useState(false);
+  const professionalWrapRef = useRef<HTMLDivElement | null>(null);
+  const professionalListId = useId();
+  const selectedBarber = professional === null ? null : (barbers[professional] ?? null);
+
+  useEffect(() => {
+    if (!professionalOpen) return;
+    const onPointerDown = (event: MouseEvent) => {
+      if (!professionalWrapRef.current?.contains(event.target as Node)) {
+        setProfessionalOpen(false);
+      }
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setProfessionalOpen(false);
+    };
+    document.addEventListener('mousedown', onPointerDown);
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown);
+      document.removeEventListener('keydown', onKeyDown);
+    };
+  }, [professionalOpen]);
 
   /**
    * Resolved against the CURRENT `days` on every render, where `-1` means "no
@@ -205,38 +240,79 @@ export function AvailabilityCalendar({
   return (
     <div className={`availability${formOpen ? '' : ' has-sticky-bar'}`}>
       <div className="prof-row">
-        {/*
-         * Exactly one professional affordance, always "Cualquier profesional".
-         * Per-barber selection is out of scope, so it stays a static pill with
-         * no handler and no internal id.
-         */}
-        <div className="prof-select">
-          <span className="prof-avatar" aria-hidden="true">
+        <div className="prof-select-wrap" ref={professionalWrapRef}>
+          <button
+            type="button"
+            className="prof-select"
+            aria-haspopup="listbox"
+            aria-expanded={professionalOpen}
+            aria-controls={professionalListId}
+            onClick={() => setProfessionalOpen((current) => !current)}
+          >
+            <span className="prof-avatar" aria-hidden="true">
+              <svg
+                width="13"
+                height="13"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <path d="M20 21a8 8 0 1 0-16 0" />
+                <circle cx="12" cy="7" r="4" />
+              </svg>
+            </span>
+            <span className="prof-select-value">{selectedBarber?.name ?? ANY_PROFESSIONAL}</span>
             <svg
-              width="13"
-              height="13"
+              className="prof-chevron"
+              width="14"
+              height="14"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
               strokeWidth="2"
+              aria-hidden="true"
             >
-              <path d="M20 21a8 8 0 1 0-16 0" />
-              <circle cx="12" cy="7" r="4" />
+              <path d="M6 9l6 6 6-6" />
             </svg>
-          </span>
-          <span className="prof-select-value">Cualquier profesional</span>
-          <svg
-            className="prof-chevron"
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden="true"
-          >
-            <path d="M6 9l6 6 6-6" />
-          </svg>
+          </button>
+          {professionalOpen ? (
+            <div
+              className="prof-menu"
+              role="listbox"
+              id={professionalListId}
+              aria-label="Profesional"
+            >
+              <button
+                type="button"
+                role="option"
+                aria-selected={professional === null}
+                className="prof-option"
+                onClick={() => {
+                  setProfessional(null);
+                  setProfessionalOpen(false);
+                }}
+              >
+                {ANY_PROFESSIONAL}
+              </button>
+              {barbers.map((barber, index) => (
+                <button
+                  key={`${barber.name}-${index}`}
+                  type="button"
+                  role="option"
+                  aria-selected={professional === index}
+                  className="prof-option"
+                  onClick={() => {
+                    setProfessional(index);
+                    setProfessionalOpen(false);
+                  }}
+                >
+                  {barber.name}
+                  {barber.alias ? <span className="prof-option-alias">{barber.alias}</span> : null}
+                </button>
+              ))}
+            </div>
+          ) : null}
         </div>
         <button
           type="button"
