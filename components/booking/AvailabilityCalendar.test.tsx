@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { AvailabilityCalendar, bucketSlots } from '~/components/booking/AvailabilityCalendar';
 import type { AvailabilityDay, AvailabilitySlot } from '~/types/booking';
 import type { Booking } from '~/components/booking/BookingForm';
+import type { Barber } from '~/types/public';
 
 /**
  * The island reads `useRouter().refresh()` when a booking ends, so it needs a
@@ -97,9 +98,19 @@ const morningOnlyDay: AvailabilityDay[] = [
  */
 const BOOKING_ENDPOINT = 'https://example.supabase.co/functions/v1/public-booking';
 
+const BARBERS: Barber[] = [
+  { name: 'Juan Pérez', alias: 'Juan', description: null, photoUrl: null },
+  { name: 'Ana Gómez', alias: null, description: null, photoUrl: null },
+];
+
 function renderCalendar(days: AvailabilityDay[]) {
   return render(
-    <AvailabilityCalendar days={days} bookingEndpoint={BOOKING_ENDPOINT} shopAddress={null} />
+    <AvailabilityCalendar
+      days={days}
+      barbers={BARBERS}
+      bookingEndpoint={BOOKING_ENDPOINT}
+      shopAddress={null}
+    />
   );
 }
 
@@ -425,6 +436,7 @@ describe('AvailabilityCalendar', () => {
             ],
           },
         ]}
+        barbers={BARBERS}
         bookingEndpoint={BOOKING_ENDPOINT}
         shopAddress={null}
       />
@@ -435,5 +447,29 @@ describe('AvailabilityCalendar', () => {
     expect(screen.getByTestId('date-card-2026-09-22')).toHaveAttribute('aria-pressed', 'true');
     expect(screen.getByRole('button', { name: '10:00' })).toBeInTheDocument();
     expect(screen.getByText('Elegí un horario')).toBeInTheDocument();
+  });
+
+  it('opens the professional listbox, selects a barber, and reflects it in the pill', () => {
+    renderCalendar(twoDays);
+
+    const pill = screen.getByRole('button', { name: /Cualquier profesional/ });
+    expect(pill).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('listbox')).toBeNull();
+
+    fireEvent.click(pill);
+    expect(pill).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('listbox', { name: 'Profesional' })).toBeInTheDocument();
+    expect(screen.getByRole('option', { name: /Ana Gómez/ })).toBeInTheDocument();
+    // The alias is a Mercado Pago transfer handle: it must never be rendered
+    // here, so the option carries the barber's name and nothing else.
+    expect(screen.getByRole('option', { name: 'Juan Pérez' })).toHaveTextContent(/^Juan Pérez$/);
+
+    fireEvent.click(screen.getByRole('option', { name: /Ana Gómez/ }));
+
+    expect(screen.queryByRole('listbox')).toBeNull();
+    expect(screen.getByRole('button', { name: /Ana Gómez/ })).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
   });
 });

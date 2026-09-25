@@ -347,49 +347,6 @@ a {
   text-overflow: ellipsis;
 }
 
-/*
- * Accessible service disclosure. The control is a native button that owns
- * `aria-expanded`; the chevron rotates with that state, so the affordance and
- * the exposed state can never disagree.
- */
-.ticket-detail-toggle {
-  flex-shrink: 0;
-  background: none;
-  border: none;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--brass-dark);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  cursor: pointer;
-  padding: 4px 0;
-}
-
-.ticket-detail-toggle svg {
-  transition: transform 0.18s ease;
-}
-
-.ticket-detail-toggle[aria-expanded='true'] svg {
-  transform: rotate(180deg);
-}
-
-.ticket-detail-toggle:focus-visible {
-  outline: 2px solid var(--brass);
-  outline-offset: 2px;
-}
-
-.ticket-detail {
-  padding: 0 18px 14px;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--muted);
-}
-
-.ticket-detail[hidden] {
-  display: none;
-}
-
 .ticket-perf {
   position: relative;
   height: 1px;
@@ -531,8 +488,9 @@ a {
 }
 
 /*
- * Booking professional affordance: one static pill with a 26px avatar and a
- * chevron, plus the calendar-jump control beside it.
+ * Booking professional affordance: a pill button with a 26px avatar and a
+ * chevron that opens a listbox of the shop's barbers, plus the calendar-jump
+ * control beside it.
  */
 .prof-row {
   display: flex;
@@ -540,6 +498,10 @@ a {
   justify-content: space-between;
   gap: 10px;
   margin: 0 0 22px;
+}
+
+.prof-select-wrap {
+  position: relative;
 }
 
 .prof-select {
@@ -550,7 +512,56 @@ a {
   border: 1px solid var(--line);
   border-radius: 999px;
   padding: 6px 14px 6px 6px;
+  color: var(--ink);
+  font-family: inherit;
   font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.prof-select[aria-expanded='true'] .prof-chevron {
+  transform: rotate(180deg);
+}
+
+/* Options panel: a plain listbox anchored under the pill. */
+.prof-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  min-width: 230px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: var(--ticket-shadow);
+}
+
+.prof-option {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  width: 100%;
+  padding: 10px 12px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: var(--ink);
+  font-family: inherit;
+  font-size: 13.5px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.prof-option:hover {
+  background: var(--paper);
+}
+
+.prof-option[aria-selected='true'] {
+  color: var(--brass-dark);
   font-weight: 600;
 }
 
@@ -573,6 +584,7 @@ a {
 .prof-chevron {
   flex-shrink: 0;
   color: var(--muted);
+  transition: transform 0.18s ease;
 }
 
 .cal-jump-btn {
