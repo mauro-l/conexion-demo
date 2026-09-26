@@ -114,6 +114,16 @@ function renderCalendar(days: AvailabilityDay[]) {
   );
 }
 
+/**
+ * Chooses a professional through the pill listbox, the way the pill test does.
+ * `Siguiente` stays disabled until a professional is chosen, so every test that
+ * expects it enabled (or clicks it) must call this first.
+ */
+function selectProfessional(name: string) {
+  fireEvent.click(screen.getByRole('button', { name: /Seleccione profesional/ }));
+  fireEvent.click(screen.getByRole('option', { name }));
+}
+
 describe('AvailabilityCalendar', () => {
   it('renders one date card per returned day with DTO-derived weekday, day and month labels', () => {
     renderCalendar(windowWithClosedLeadingDay);
@@ -214,6 +224,7 @@ describe('AvailabilityCalendar', () => {
   it('stages the chosen slot in the footer without opening the form', () => {
     renderCalendar(twoDays);
 
+    selectProfessional('Juan Pérez');
     fireEvent.click(screen.getByRole('button', { name: '09:30' }));
 
     // The staged state names the day and the time, and the form is not reachable
@@ -228,7 +239,25 @@ describe('AvailabilityCalendar', () => {
     renderCalendar(twoDays);
 
     expect(screen.getByRole('button', { name: 'Siguiente' })).toBeDisabled();
-    expect(screen.getByRole('status')).toHaveTextContent('Elegí fecha y hora para continuar');
+    expect(screen.getByRole('status')).toHaveTextContent(
+      'Elegí profesional, fecha y hora para continuar'
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '09:00' }));
+
+    // A staged slot alone is not enough: Siguiente also requires a professional.
+    expect(screen.getByRole('button', { name: 'Siguiente' })).toBeDisabled();
+
+    selectProfessional('Juan Pérez');
+
+    expect(screen.getByRole('button', { name: 'Siguiente' })).toBeEnabled();
+  });
+
+  it('disables the call to action until a professional is chosen', () => {
+    renderCalendar(twoDays);
+
+    selectProfessional('Ana Gómez');
+    expect(screen.getByRole('button', { name: 'Siguiente' })).toBeDisabled();
 
     fireEvent.click(screen.getByRole('button', { name: '09:00' }));
 
@@ -247,6 +276,7 @@ describe('AvailabilityCalendar', () => {
   it('hands the staged slot to the customer form only after Siguiente', () => {
     renderCalendar(twoDays);
 
+    selectProfessional('Juan Pérez');
     fireEvent.click(screen.getByRole('button', { name: '09:30' }));
     fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }));
 
@@ -263,6 +293,7 @@ describe('AvailabilityCalendar', () => {
   it('shows the standing country prefix beside the phone field', () => {
     renderCalendar(twoDays);
 
+    selectProfessional('Juan Pérez');
     fireEvent.click(screen.getByRole('button', { name: '09:00' }));
     fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }));
 
@@ -280,6 +311,7 @@ describe('AvailabilityCalendar', () => {
 
     try {
       renderCalendar(twoDays);
+      selectProfessional('Juan Pérez');
       fireEvent.click(screen.getByRole('button', { name: '09:00' }));
       fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }));
       fireEvent.click(screen.getByRole('button', { name: 'Elegir otro horario' }));
@@ -294,6 +326,7 @@ describe('AvailabilityCalendar', () => {
   it('returns to the slot grid with the staged time still named', () => {
     renderCalendar(twoDays);
 
+    selectProfessional('Juan Pérez');
     fireEvent.click(screen.getByRole('button', { name: '09:00' }));
     fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }));
     fireEvent.click(screen.getByRole('button', { name: 'Elegir otro horario' }));
@@ -380,6 +413,7 @@ describe('AvailabilityCalendar', () => {
 
     try {
       renderCalendar(twoDays);
+      selectProfessional('Juan Pérez');
       fireEvent.click(screen.getByRole('button', { name: '09:00' }));
       fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }));
       fireEvent.change(screen.getByLabelText(/Nombre/), { target: { value: 'Mauro' } });
@@ -406,6 +440,7 @@ describe('AvailabilityCalendar', () => {
   it('backs out of the form without re-reading availability when nothing was booked', () => {
     renderCalendar(twoDays);
 
+    selectProfessional('Juan Pérez');
     fireEvent.click(screen.getByRole('button', { name: '09:00' }));
     fireEvent.click(screen.getByRole('button', { name: 'Siguiente' }));
     fireEvent.click(screen.getByRole('button', { name: 'Elegir otro horario' }));
@@ -452,7 +487,7 @@ describe('AvailabilityCalendar', () => {
   it('opens the professional listbox, selects a barber, and reflects it in the pill', () => {
     renderCalendar(twoDays);
 
-    const pill = screen.getByRole('button', { name: /Cualquier profesional/ });
+    const pill = screen.getByRole('button', { name: /Seleccione profesional/ });
     expect(pill).toHaveAttribute('aria-expanded', 'false');
     expect(screen.queryByRole('listbox')).toBeNull();
 
