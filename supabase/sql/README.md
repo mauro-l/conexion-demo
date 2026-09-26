@@ -31,8 +31,11 @@ Keeping them here means `supabase db push` sees no local migrations at all.
 | 4 | `phase12_public_availability.sql` | `phase12_public_availability_rollback.sql` |
 | 5 | `phase13_public_crear_turno.sql` | `phase13_public_crear_turno_rollback.sql` |
 | 6 | `phase14_public_crear_turno_email_and_area.sql` | `phase14_public_crear_turno_email_and_area_rollback.sql` |
+| 7 | `phase15_public_cancellation.sql` | `phase15_public_cancellation_rollback.sql` |
+| 8 | `phase16_public_booking_lookup.sql` | `phase16_public_booking_lookup_rollback.sql` |
 
-**Rollbacks run in reverse order: phase14 first, then phase13, phase12, phase11, phase10, phase9.**
+**Rollbacks run in reverse order: phase16 first, then phase15, phase14, phase13, phase12,
+phase11, phase10, phase9.**
 
 ## Dependencies
 
@@ -48,6 +51,12 @@ Keeping them here means `supabase db push` sees no local migrations at all.
   added with `CREATE OR REPLACE` — that would leave the eight-argument version in place as an
   overload and PostgREST would answer `PGRST203` — so phase14 drops the eight-argument signature
   and creates the nine-argument one. It also widens `Barberia.codigos_area_permitidos`.
+- `phase15` REQUIRES `phase14`: it drops and recreates the booking RPC with the 10-argument
+  signature that mints a management token, so applying it on top of phase13's eight-argument
+  function leaves two overloads. It also creates `"TurnoTokenGestion"`.
+- `phase16` REQUIRES `phase15`: `public_recuperar_turno` inserts into `"TurnoTokenGestion"` and
+  reuses its expiry rule. Rolling back `phase15` while `phase16` is applied fails at runtime with
+  `42P01 relation "TurnoTokenGestion" does not exist`. It adds no table, column or sequence.
 
 ## Idempotency
 

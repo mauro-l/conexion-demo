@@ -54,3 +54,9 @@ export type ManagementGrant = {
   token: string;
   expiresAt: string;
 };
+
+/** The recovered booking plus a freshly minted management grant. */
+export type BookingLookupResult = {
+  booking: ManagedBooking;
+  management: ManagementGrant;
+};
