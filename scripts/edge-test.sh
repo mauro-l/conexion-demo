@@ -336,6 +336,21 @@ assert_managed_response_redacted() {
     "$(printf '%s' "$response_body" | grep -cE '"(id|barbero_id|barberia_id|users_id)"' || true)"
 }
 
+# The lookup match response legitimately carries the freshly minted token in
+# `management.token` — that is the whole point. What must stay out is the hash,
+# the identity the visitor supplied, and any internal id.
+assert_matched_response_redacted() {
+  local label="$1" response_body="$2" phone="$3" email="$4"
+  assert_absent "$label: phone is not exposed" "$phone" "$response_body"
+  assert_absent "$label: email is not exposed" "$email" "$response_body"
+  assert_absent "$label: customer name is not exposed" '"Recovery"' "$response_body"
+  assert_absent "$label: customer surname is not exposed" '"Fixture"' "$response_body"
+  assert_absent "$label: token hash field is not exposed" 'management_token_hash' "$response_body"
+  assert_no_hash_value "$label: hash values are not exposed" "$response_body"
+  assert_eq "$label: no internal ids" "0" \
+    "$(printf '%s' "$response_body" | grep -cE '"(id|barbero_id|barberia_id|users_id)"' || true)"
+}
+
 print_redacted_server_log() {
   echo "edge-test: repo-served runtime log (credentials, tokens, hashes, emails and phone numbers redacted)" >&2
   tail -n 40 "$server_log" | perl -pe '
@@ -527,6 +542,98 @@ released="$(node -e '
   process.stdout.write(String(found));
 ' "$slot_start" < "$work/body")"
 assert_eq "cancellation flow: slot is released again" "true" "$released"
+
+# 10. Lookup leg: a visitor who lost the management link recovers the booking
+#     from the exact identity they booked with, and gets a fresh usable token.
+#     The lookup endpoint is server-to-server in production; here it is called
+#     directly to prove its contract over real HTTP.
+lookup_endpoint="${base_url}/functions/v1/public-booking-lookup"
+
+# A booking that is still upcoming must exist to be found. Reuse the freed slot
+# with a fresh idempotency key and identity so the lookup has a deterministic
+# match, independent of whatever the cancellation leg left behind.
+lookup_idempotency_key="edge-lookup-$(date +%s)-${RANDOM}-${RANDOM}"
+lookup_phone_local="$(printf '%04d%04d' "$((RANDOM % 10000))" "$((RANDOM % 10000))")"
+lookup_phone="+54911${lookup_phone_local}"
+lookup_email="${lookup_idempotency_key}@example.com"
+lookup_payload="$(node -e '
+  const [token, phone, phoneLocal, email] = process.argv.slice(1);
+  process.stdout.write(JSON.stringify({
+    token,
+    nombre: "Recovery",
+    apellido: "Fixture",
+    telefono: phone,
+    telefonoRaw: `11${phoneLocal}`,
+    email,
+  }));
+' "$availability_token" "$lookup_phone" "$lookup_phone_local" "$lookup_email")"
+request_booking "${base_url}/functions/v1/public-booking" "$lookup_payload" "$lookup_idempotency_key"
+if [[ "$(status)" != "201" ]]; then
+  lookup_booking_error_code="$(json_value error.code 2>/dev/null || true)"
+  fatal "lookup flow booking: expected [201], got [$(status)] (code ${lookup_booking_error_code:-unavailable})"
+  print_redacted_server_log
+  exit 1
+fi
+pass "lookup flow booking: status"
+
+lookup_body="$(node -e '
+  const [slug, nombre, apellido, telefono] = process.argv.slice(1);
+  process.stdout.write(JSON.stringify({ slug, nombre, apellido, telefono }));
+' "$slug" "Recovery" "Fixture" "$lookup_phone")"
+
+# 10a. Exact identity match -> 200 with a freshly minted token.
+request_json POST "$lookup_endpoint" "$lookup_body"
+assert_eq "lookup match: status" "200" "$(status)"
+assert_no_store "lookup match"
+lookup_token="$(json_value management.token)"
+if [[ ! "$lookup_token" =~ ^[A-Za-z0-9_-]{43}$ ]]; then
+  fatal "lookup match: management grant is missing or malformed"
+  print_redacted_server_log
+  exit 1
+fi
+pass "lookup match: management token issued"
+assert_eq "lookup match: expires at booking start" "$(json_value booking.start)" "$(json_value management.expiresAt)"
+assert_eq "lookup match: no PII in the DTO" "0" \
+  "$(printf '%s' "$(body)" | grep -cE '"(nombre|apellido|telefono|email|cliente_id|turno_id)"' || true)"
+assert_matched_response_redacted "lookup match" "$(body)" "$lookup_phone" "$lookup_email"
+
+# The token minted by the lookup must work with the existing read edge.
+request GET "${manage_base}?token=${lookup_token}"
+assert_eq "lookup match: minted token reads the booking" "200" "$(status)"
+assert_no_store "lookup match: minted token read"
+assert_eq "lookup match: minted token service" "$service_name" "$(json_value booking.serviceName)"
+
+# 10b. A wrong phone is the same generic not-found as an unknown identity.
+lookup_wrong_phone="$(node -e '
+  const [slug, nombre, apellido] = process.argv.slice(1);
+  process.stdout.write(JSON.stringify({ slug, nombre, apellido, telefono: "+5491199999999" }));
+' "$slug" "Recovery" "Fixture")"
+request_json POST "$lookup_endpoint" "$lookup_wrong_phone"
+assert_error_code_redacted "lookup wrong phone" "PUBLIC_RESOURCE_NOT_FOUND" "404"
+assert_absent "lookup wrong phone: no token is issued" '"management"' "$(body)"
+
+# 10c. An entirely unknown identity is the same generic not-found.
+lookup_unknown_identity="$(node -e '
+  const [slug] = process.argv.slice(1);
+  process.stdout.write(JSON.stringify({ slug, nombre: "No", apellido: "Existe", telefono: "+5491100000000" }));
+' "$slug")"
+request_json POST "$lookup_endpoint" "$lookup_unknown_identity"
+assert_error_code_redacted "lookup unknown identity" "PUBLIC_RESOURCE_NOT_FOUND" "404"
+
+# 10d. The phone format is owned by the RPC: a bad format is INVALID_INPUT.
+lookup_bad_phone="$(node -e '
+  const [slug] = process.argv.slice(1);
+  process.stdout.write(JSON.stringify({ slug, nombre: "Recovery", apellido: "Fixture", telefono: "123" }));
+' "$slug")"
+request_json POST "$lookup_endpoint" "$lookup_bad_phone"
+assert_error_code_redacted "lookup invalid phone format" "INVALID_INPUT" "400"
+
+# 10e. A malformed body and a wrong method keep their stable codes.
+request_json POST "$lookup_endpoint" 'not-json'
+assert_error_code_redacted "lookup malformed body" "INVALID_INPUT" "400"
+
+request GET "$lookup_endpoint"
+assert_error_code_redacted "wrong lookup method" "METHOD_NOT_ALLOWED" "405"
 
 echo "edge-test: ${checks} checks, ${failures} failed"
 if (( failures > 0 )); then

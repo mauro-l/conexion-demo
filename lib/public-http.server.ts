@@ -65,10 +65,17 @@ export type PublicJsonRequest = {
    * `{ cache: 'no-store' }`. This is the only place the two reads differ.
    */
   cache: FetchInit;
+  /**
+   * Read-only callers leave this unset and get `GET`. The booking lookup is a
+   * POST because it carries the visitor's identity in the body, never in a URL
+   * — names and phones must not land in access logs or browser history.
+   */
+  method?: 'GET' | 'POST';
+  body?: string;
 };
 
 /**
- * GET one public Edge Function endpoint as JSON and hand the body to `parse`.
+ * Fetch one public Edge Function endpoint as JSON and hand the body to `parse`.
  *
  * `validateSlug` runs in the caller before the URL is built, so an invalid
  * slug is rejected before any network call. Transport failures and HTTP errors
@@ -78,14 +85,15 @@ export async function fetchPublicJson<T>(
   request: PublicJsonRequest,
   parse: (body: unknown) => T
 ): Promise<T> {
-  const { fetchImpl, url, headers, timeoutMs, cache } = request;
+  const { fetchImpl, url, headers, timeoutMs, cache, method = 'GET', body: requestBody } = request;
 
   let response: Response;
   try {
     response = await fetchImpl(url, {
       ...cache,
-      method: 'GET',
+      method,
       headers,
+      body: requestBody,
       signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (error) {

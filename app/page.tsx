@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { PublicHeader } from '~/components/public/PublicHeader';
 import { PublicHero } from '~/components/public/PublicHero';
 import { PublicInfo } from '~/components/public/PublicInfo';
+import { PublicFooter } from '~/components/public/PublicFooter';
 import { ServiceCatalog } from '~/components/public/ServiceCatalog';
 import { loadPublicPageData, PublicApiError } from '~/lib/public-api.server';
 import { getConfiguredSlug } from '~/lib/site-config.server';
@@ -48,6 +49,7 @@ export default async function PublicLandingPage() {
         <PublicInfo barberia={context.barberia} />
       </PublicHero>
       <ServiceCatalog services={catalog.services} />
+      <PublicFooter />
     </>
   );
 }

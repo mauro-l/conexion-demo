@@ -149,7 +149,13 @@ test.describe('public landing at /', () => {
 
     await expect(page.locator('.prof-select')).toHaveCount(0);
     await expect(page.locator('.cal-jump-btn')).toHaveCount(0);
-    await expect(page.getByText('Iniciar sesión')).toHaveCount(0);
+
+    // The login link is the one control that legitimately leaves this app. It
+    // must point at the operator app rather than return as the prototype's dead
+    // `#` affordance, which is what the landing used to carry.
+    const login = page.getByRole('link', { name: 'Iniciar sesión' });
+    await expect(login).toHaveAttribute('href', 'https://proyecto-final-rn.vercel.app/');
+    await expect(login).not.toHaveAttribute('href', '#');
 
     // Removed fallbacks must not reappear when the DTO has no value for them.
     const html = await page.content();
