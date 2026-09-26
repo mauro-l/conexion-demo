@@ -33,8 +33,9 @@ Keeping them here means `supabase db push` sees no local migrations at all.
 | 6 | `phase14_public_crear_turno_email_and_area.sql` | `phase14_public_crear_turno_email_and_area_rollback.sql` |
 | 7 | `phase15_public_cancellation.sql` | `phase15_public_cancellation_rollback.sql` |
 | 8 | `phase16_public_booking_lookup.sql` | `phase16_public_booking_lookup_rollback.sql` |
+| 9 | `phase18_availability_por_barbero.sql` | `phase18_availability_por_barbero_rollback.sql` |
 
-**Rollbacks run in reverse order: phase16 first, then phase15, phase14, phase13, phase12,
+**Rollbacks run in reverse order: phase18 first, then phase16, phase15, phase14, phase13, phase12,
 phase11, phase10, phase9.**
 
 ## Dependencies
@@ -57,6 +58,10 @@ phase11, phase10, phase9.**
 - `phase16` REQUIRES `phase15`: `public_recuperar_turno` inserts into `"TurnoTokenGestion"` and
   reuses its expiry rule. Rolling back `phase15` while `phase16` is applied fails at runtime with
   `42P01 relation "TurnoTokenGestion" does not exist`. It adds no table, column or sequence.
+- `phase18` REQUIRES `phase12` and REPLACES the `public_availability(text, text)` body with
+  `CREATE OR REPLACE` (same signature, so no grant or PostgREST change): slots are now scoped
+  to the requested service's barber instead of every active barber of the shop. Named phase18
+  because the sibling branch `chore/phase17-fk-indexes` already owns the phase17 name.
 
 ## Idempotency
 

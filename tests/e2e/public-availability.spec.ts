@@ -174,6 +174,68 @@ order by 1;
   return state;
 }
 
+/**
+ * Read-only map of published service token to its barber's working days,
+ * taken straight from the local scratch database through the same `sg docker`
+ * path as reservationState. The probe never writes: it runs a single SELECT.
+ * A NULL `dias_habiles` renders empty under `-At` and maps to `[]` (unknown or
+ * schedule-less barber). If the database cannot be reached the test fails
+ * loudly rather than passing on an empty map.
+ */
+function serviceBarberDays(): Record<string, number[]> {
+  const sql = `
+select s.public_service_token, ba.dias_habiles
+from public."Servicio" s
+join public."Barbero" ba on ba.id = s.barbero_id
+where s.public_service_token is not null;
+`;
+  const output = execFileSync(
+    'sg',
+    ['docker', '-c', `docker exec -i ${DB_CONTAINER} psql -U postgres -d postgres -At`],
+    { input: sql, encoding: 'utf8' }
+  );
+
+  const days: Record<string, number[]> = {};
+  for (const line of output.trim().split('\n')) {
+    if (!line) continue;
+    const [token, raw] = line.split('|');
+    if (!token || raw === undefined) {
+      throw new Error(`Unexpected database probe output: ${line}`);
+    }
+    // Postgres int[] renders as {2,4,5,6}; NULL renders as an empty field.
+    days[token] = raw
+      .replace(/[{}]/g, '')
+      .split(',')
+      .filter(Boolean)
+      .map(Number);
+  }
+  return days;
+}
+
+/**
+ * Read-only lookup of one published service whose barber is active but keeps
+ * no usable schedule (NULL working days or hours). Returns null when the
+ * scratch stack has no such fixture. Never writes: a single SELECT.
+ */
+function scheduleLessServiceToken(): string | null {
+  const sql = `
+select s.public_service_token
+from public."Servicio" s
+join public."Barbero" ba on ba.id = s.barbero_id
+where s.public_service_token is not null
+  and ba.activo = true
+  and (ba.dias_habiles is null or ba.hora_apertura is null or ba.hora_cierre is null)
+limit 1;
+`;
+  const output = execFileSync(
+    'sg',
+    ['docker', '-c', `docker exec -i ${DB_CONTAINER} psql -U postgres -d postgres -At`],
+    { input: sql, encoding: 'utf8' }
+  );
+  const token = output.trim().split('\n')[0]?.trim();
+  return token ? token : null;
+}
+
 test.describe('public availability surface', () => {
   test('activates the catalog CTA into the read-only booking route without a mutation', async ({
     page,
@@ -454,5 +516,54 @@ test.describe('public availability surface', () => {
       dayEntry.slots.some((slot) => slot.start === chosen.start)
     );
     expect(stillOffered).toBe(false);
+  });
+
+  test('scopes availability slots to the working days of the requested service barber', async () => {
+    // Regression for phase18: the RPC computed slots from every active barber
+    // of the shop and only used the service for its duration, so a service
+    // answered days its own barber never works (live: servicio 20 / barbero 11
+    // answered Mondays and Wednesdays). Every offered slot must now fall on a
+    // working day of the service's own barber.
+    const { services } = await catalog();
+    expect(services.length).toBeGreaterThan(0);
+    const barberDays = serviceBarberDays();
+
+    let checked = 0;
+    for (const service of services) {
+      const body = await availability(service.publicServiceToken);
+      if (!Array.isArray(body.days)) continue;
+      const allowed = barberDays[service.publicServiceToken];
+      expect(allowed, `the scratch stack knows the barber days of ${service.name}`).toBeDefined();
+      if (!allowed || allowed.length === 0) {
+        // A schedule-less barber contributes no slots: every day stays empty.
+        for (const day of body.days) expect(day.slots).toEqual([]);
+        continue;
+      }
+      for (const day of body.days) {
+        for (const slot of day.slots) {
+          expect(
+            allowed,
+            `slot ${slot.start} of ${service.name} falls on its own barber working day`
+          ).toContain(day.day);
+        }
+        checked += day.slots.length;
+      }
+    }
+    expect(checked, 'the local scratch stack exposes at least one slot').toBeGreaterThan(0);
+  });
+
+  test('returns an empty 14-day window when the service barber keeps no schedule', async () => {
+    // Post-fix contract: no fallback to other barbers' hours, just honest
+    // emptiness — the full window with every day's slots array empty.
+    const token = scheduleLessServiceToken();
+    test.skip(
+      token === null,
+      'the local scratch stack has no published service whose active barber lacks a schedule'
+    );
+    if (!token) throw new Error('unreachable: skipped above when null');
+
+    const body = await availability(token);
+    expect(body.days).toHaveLength(14);
+    for (const day of body.days) expect(day.slots).toEqual([]);
   });
 });
