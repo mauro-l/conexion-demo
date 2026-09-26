@@ -34,8 +34,9 @@ Keeping them here means `supabase db push` sees no local migrations at all.
 | 7 | `phase15_public_cancellation.sql` | `phase15_public_cancellation_rollback.sql` |
 | 8 | `phase16_public_booking_lookup.sql` | `phase16_public_booking_lookup_rollback.sql` |
 | 9 | `phase18_availability_por_barbero.sql` | `phase18_availability_por_barbero_rollback.sql` |
+| 10 | `phase19_crear_turno_fail_closed.sql` | `phase19_crear_turno_fail_closed_rollback.sql` |
 
-**Rollbacks run in reverse order: phase18 first, then phase16, phase15, phase14, phase13, phase12,
+**Rollbacks run in reverse order: phase19 first, then phase18, phase16, phase15, phase14, phase13, phase12,
 phase11, phase10, phase9.**
 
 ## Dependencies
@@ -62,6 +63,11 @@ phase11, phase10, phase9.**
   `CREATE OR REPLACE` (same signature, so no grant or PostgREST change): slots are now scoped
   to the requested service's barber instead of every active barber of the shop. Named phase18
   because the sibling branch `chore/phase17-fk-indexes` already owns the phase17 name.
+- `phase19` REQUIRES `phase15` and REPLACES only the `public_crear_turno` body with
+  `CREATE OR REPLACE` (same 10-argument signature, so no DROP and no grant or PostgREST
+  change): guards 3.7/3.8 fail closed on NULL schedule data on their own (defense in depth
+  behind 3.5), with error codes unchanged. Its rollback restores the phase15 body verbatim
+  and must run before phase15's rollback.
 
 ## Idempotency
 
