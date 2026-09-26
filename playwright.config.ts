@@ -52,6 +52,7 @@ export default defineConfig({
         /profile\.spec\.ts/,
         /public-availability\.spec\.ts/,
         /public-cancellation\.spec\.ts/,
+        /public-booking-lookup\.spec\.ts/,
       ],
       use: { ...devices['Desktop Chrome'], baseURL: `http://localhost:${LANDING_PORT}` },
     },
