@@ -226,7 +226,9 @@ frozen, so parallel writers would only add merge risk.
 - [x] L6 — verification: every gate green against the local stack
 - [x] **Hosted migration** — `phase16` applied by the owner; the remote privilege
       probe reports `anon` false, `authenticated` false, `service_role` true.
-- [ ] **Delivery** — nothing is committed. The owner owns branches and commits.
+- [x] **Delivery** — committed and pushed on `feat/public-booking-lookup`:
+      `f272022` backend, `ab1d1fd` surface, `01d5555` tests, `7541aa9` the
+      edge-serve script, `2378255` this brief and the prototype. No PR opened.
 
 **Added after L6, outside the frozen interfaces:** `scripts/edge-serve.sh`, run
 as `bash scripts/edge-serve.sh` (the repository's other `scripts/*.sh` are also
@@ -341,7 +343,9 @@ is why the verifier could not find it. The lookup query is correctly indexed.
 
 1. **The owner already applied `phase16` to the hosted project** (privilege probe
    confirmed there: `anon` false, `authenticated` false, `service_role` true).
-2. Nothing is committed. The owner owns branches and commits.
+2. Committed and pushed on `feat/public-booking-lookup`; no PR has been opened.
+   The branch does **not** carry `.gitignore`, `next-env.d.ts` or the unrelated
+   `odd/tasks/*.md` files, which belong to other work in flight.
 3. The local edge runtime serving this repo's Functions was left running so the
    stack is usable for a preview. A `supabase functions serve` process dies with
    the shell that started it, so re-run `bash scripts/edge-serve.sh` if a preview
