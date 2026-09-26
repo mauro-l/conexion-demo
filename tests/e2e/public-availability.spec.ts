@@ -321,7 +321,7 @@ test.describe('public availability surface', () => {
 
     await page.goto(`/reservar?service=${service.publicServiceToken}`);
     await expect(page.locator('h1.hero-title')).toHaveText(before.service.name);
-    await expect(page.locator('.prof-select-value')).toHaveText('Cualquier profesional');
+    await expect(page.locator('.prof-select-value')).toHaveText('Seleccione profesional');
 
     const day = dateCard(page, target);
     await day.click();
@@ -332,8 +332,14 @@ test.describe('public availability surface', () => {
 
     // The slot is staged behind the footer, not handed to the form yet: the
     // visitor has to see which time they are confirming before typing anything.
+    // Siguiente also requires an explicit professional, so it stays disabled
+    // until one is chosen.
     await expect(page.locator('.sticky-summary')).toContainText(dayTitle(target));
     await expect(page.getByLabel(/Nombre/)).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Siguiente' })).toBeDisabled();
+
+    await page.locator('.prof-select').click();
+    await page.getByRole('option').nth(1).click();
     await expect(page.getByRole('button', { name: 'Siguiente' })).toBeEnabled();
 
     await page.getByRole('button', { name: 'Siguiente' }).click();
@@ -391,10 +397,11 @@ test.describe('public availability surface', () => {
     await expect(page.getByText('Elegí una fecha', { exact: true })).toBeVisible();
     await expect(page.getByText('Elegí un horario', { exact: true })).toBeVisible();
 
-    // Exactly one static professional affordance: pill, avatar and chevron, no selector.
+    // Exactly one professional affordance: pill, avatar and chevron, with the
+    // selector behind it resolving the chosen barber for the booking.
     const pill = page.locator('.prof-select');
     await expect(pill).toHaveCount(1);
-    await expect(pill).toContainText('Cualquier profesional');
+    await expect(pill).toContainText('Seleccione profesional');
     await expect(pill.locator('.prof-avatar')).toHaveCount(1);
     await expect(pill.locator('.prof-chevron')).toHaveCount(1);
     await expect(page.locator('.prof-select-label')).toHaveCount(0);
@@ -467,6 +474,8 @@ test.describe('public availability surface', () => {
     await page.goto(`/reservar?service=${service.publicServiceToken}`);
     await dateCard(page, target).click();
     await page.locator('.availability-slots .availability-slot').first().click();
+    await page.locator('.prof-select').click();
+    await page.getByRole('option').nth(1).click();
     await page.getByRole('button', { name: 'Siguiente' }).click();
 
     // The phone is typed the way a person types it, not canonically: normalizing

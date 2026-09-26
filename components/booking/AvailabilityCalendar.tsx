@@ -54,7 +54,7 @@ export type TimeBucket = 'Mañana' | 'Tarde' | 'Noche';
 const TIME_BUCKETS: readonly TimeBucket[] = ['Mañana', 'Tarde', 'Noche'];
 
 /** The no-selection label; also the first option of the professional listbox. */
-const ANY_PROFESSIONAL = 'Cualquier profesional';
+const SELECT_PROFESSIONAL = 'Seleccione profesional';
 
 /** The local time part of a DTO date-time string, without constructing a `Date`. */
 function timePart(localDateTime: string): string {
@@ -158,9 +158,9 @@ export function AvailabilityCalendar({
   const selectedCardRef = useRef<HTMLButtonElement | null>(null);
 
   /**
-   * Professional selection. `null` is "Cualquier profesional". The list is
-   * server-owned, so the index is the stable identity here; the booking RPC
-   * still resolves the barber from the chosen service.
+   * Professional selection. `null` means no professional chosen yet ("Seleccione
+   * profesional"). The list is server-owned, so the index is the stable identity
+   * here; the booking RPC still resolves the barber from the chosen service.
    */
   const [professional, setProfessional] = useState<number | null>(null);
   const [professionalOpen, setProfessionalOpen] = useState(false);
@@ -262,7 +262,7 @@ export function AvailabilityCalendar({
                 <circle cx="12" cy="7" r="4" />
               </svg>
             </span>
-            <span className="prof-select-value">{selectedBarber?.name ?? ANY_PROFESSIONAL}</span>
+            <span className="prof-select-value">{selectedBarber?.name ?? SELECT_PROFESSIONAL}</span>
             <svg
               className="prof-chevron"
               width="14"
@@ -293,7 +293,7 @@ export function AvailabilityCalendar({
                   setProfessionalOpen(false);
                 }}
               >
-                {ANY_PROFESSIONAL}
+                {SELECT_PROFESSIONAL}
               </button>
               {barbers.map((barber, index) => (
                 <button
@@ -437,13 +437,13 @@ export function AvailabilityCalendar({
                 {formatTime(selected.slot.start)} hs
               </>
             ) : (
-              'Elegí fecha y hora para continuar'
+              'Elegí profesional, fecha y hora para continuar'
             )}
           </p>
           <button
             type="button"
             className="btn-primary"
-            disabled={selected.slot === null}
+            disabled={selected.slot === null || professional === null}
             onClick={() =>
               setSelected({ dayIndex: selectedDayIndex, slot: selected.slot, formOpen: true })
             }
