@@ -33,9 +33,14 @@ Keeping them here means `supabase db push` sees no local migrations at all.
 | 6 | `phase14_public_crear_turno_email_and_area.sql` | `phase14_public_crear_turno_email_and_area_rollback.sql` |
 | 7 | `phase15_public_cancellation.sql` | `phase15_public_cancellation_rollback.sql` |
 | 8 | `phase16_public_booking_lookup.sql` | `phase16_public_booking_lookup_rollback.sql` |
+| 9 | `phase17_public_fk_indexes.sql` | `phase17_public_fk_indexes_rollback.sql` |
 
-**Rollbacks run in reverse order: phase16 first, then phase15, phase14, phase13, phase12,
-phase11, phase10, phase9.**
+**Rollbacks run in reverse order: phase17 first, then phase16, phase15, phase14, phase13,
+phase12, phase11, phase10, phase9.**
+
+Phase17 is additive and independent of the public RPC dependency chain: it adds
+covering indexes for `BookingIdempotency.turno_id` and
+`TurnoTokenGestion.turno_id`.
 
 ## Dependencies
 
