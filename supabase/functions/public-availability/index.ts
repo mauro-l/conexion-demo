@@ -3,8 +3,17 @@ import { errorResponse, handleOptions, jsonResponse } from '../_shared/http.ts';
 // Token signing lives in one shared module so the Edge, Vitest, and the future
 // Fase 3 writer all use the exact same implementation.
 import { signAvailabilityToken } from '../_shared/availability-token.ts';
+import {
+  checkRateLimit,
+  extractClientIp,
+  rateLimitResponse,
+} from '../_shared/rate-limit.ts';
 
 const FUNCTION_NAME = 'public-availability';
+// Freno 1: at most 60 reads per IP per 60 s window (see
+// odd/tasks/rate-limit.md). Reads are cheap but anonymous, so a burst still
+// gets no RPC or signing work beyond the counter hit itself.
+const RATE_LIMIT = 60;
 const SLUG_RE = /^[a-z0-9-]{1,63}$/;
 // Matches the phase11 default `encode(gen_random_bytes(16), 'hex')`: opaque, 32 hex.
 const SERVICE_TOKEN_RE = /^[a-f0-9]{32}$/;
@@ -60,6 +69,23 @@ Deno.serve(async (req: Request): Promise<Response> => {
   if (req.method === 'OPTIONS') return handleOptions(origin, true);
   if (req.method !== 'GET') {
     return errorResponse('METHOD_NOT_ALLOWED', 'Method not allowed', 405, false, origin, true);
+  }
+
+  try {
+    const denied = rateLimitResponse(
+      await checkRateLimit(
+        createServiceClient(),
+        extractClientIp(req.headers),
+        RATE_LIMIT
+      ),
+      origin,
+      'GET, OPTIONS'
+    );
+    if (denied) return denied;
+  } catch {
+    // Fail closed: without a counter (or without a DB client) nothing passes.
+    console.error(`${FUNCTION_NAME} rate limit unavailable`);
+    return errorResponse('INTERNAL_ERROR', 'Internal error', 500, false, origin, true);
   }
 
   const url = new URL(req.url);

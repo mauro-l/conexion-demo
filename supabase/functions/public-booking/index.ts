@@ -6,12 +6,21 @@ import {
   WRITE_METHODS,
 } from '../_shared/http.ts';
 import {
+  checkRateLimit,
+  extractClientIp,
+  rateLimitResponse,
+} from '../_shared/rate-limit.ts';
+import {
   verifyAvailabilityToken,
   type AvailabilityTokenFailure,
 } from '../_shared/availability-token.ts';
 import { generateManagementToken, hashManagementToken } from '../_shared/management-token.ts';
 
 const FUNCTION_NAME = 'public-booking';
+// Freno 1: at most 5 booking writes per IP per 60 s window (see
+// odd/tasks/rate-limit.md). Checked before any other work so a burst adds
+// no token, RPC or DB load.
+const RATE_LIMIT = 5;
 const MAX_BODY_BYTES = 4096;
 const MAX_NAME_CHARS = 80;
 const MAX_EMAIL_CHARS = 254;
@@ -61,7 +70,8 @@ const TOKEN_FAILURE_STATUS: Record<AvailabilityTokenFailure, number> = {
  * CORS is not an authorization boundary here. The origin allow-list decides
  * only whether a browser is allowed to read the response, and `Origin` is
  * trivially spoofed outside a browser. The real gate is the token plus the
- * RPC's server-side revalidation; the plans defer rate limiting.
+ * RPC's server-side revalidation, plus the per-IP fixed-window rate limit
+ * (`RATE_LIMIT` above) that rejects bursts before any token, RPC or DB work.
  */
 Deno.serve(async (req: Request): Promise<Response> => {
   const origin = req.headers.get('origin');
@@ -80,6 +90,19 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   const invalid = (code = 'INVALID_INPUT', message = 'Invalid input') =>
     errorResponse(code, message, 400, false, origin, true, WRITE_METHODS);
+
+  try {
+    const denied = rateLimitResponse(
+      await checkRateLimit(createServiceClient(), extractClientIp(req.headers), RATE_LIMIT),
+      origin,
+      WRITE_METHODS
+    );
+    if (denied) return denied;
+  } catch {
+    // Fail closed: without a counter (or without a DB client) nothing passes.
+    console.error(`${FUNCTION_NAME} rate limit unavailable`);
+    return errorResponse('INTERNAL_ERROR', 'Internal error', 500, false, origin, true, WRITE_METHODS);
+  }
 
   const secret = Deno.env.get('PUBLIC_AVAILABILITY_HMAC_SECRET') ?? '';
   if (secret === '') {

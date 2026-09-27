@@ -62,9 +62,9 @@ conseguir 8 números distintos sí tiene costo. Regla futura: 1 `IF` en
   `x-forwarded-for` / `cf-connecting-ip` con fallback seguro.
   Evidencia: `rate-limit.test.ts` 13/13 verde (`npx vitest run
   supabase/functions/_shared/rate-limit.test.ts`, 2026-09-27).
-- [ ] RL-3 Integrar en `public-booking` (5/min), `public-booking-lookup` (10/min) y
+- [x] RL-3 Integrar en `public-booking` (5/min), `public-booking-lookup` (10/min) y
   `public-availability` (60/min). 429 con `Retry-After: 60`.
-- [ ] RL-4 Tests: `scripts/edge-test.sh` + caso SQL (5 pasan, 6to da 429; contador
+- [x] RL-4 Tests: `scripts/edge-test.sh` + caso SQL (5 pasan, 6to da 429; contador
   roto → rechazo). Registrar evidencia aquí.
 
 ## Authorized scope
@@ -108,7 +108,15 @@ Revisión nativa: candidata = work-unit commit; corre solo bajo el switch RDD de
 - 2026-09-27 RL-1: migración `phase17_rate_limit` (tabla + `rate_limit_check` +
   rollback). Commit `93e1a51`.
 - 2026-09-27 RL-2: helper `_shared/rate-limit.ts` + `rate-limit.test.ts`
-  (13/13 verde). Commit pendiente de hash.
+  (13/13 verde). Commit `a37c70a`.
+- 2026-09-27 RL-3: límite integrado en las 3 funciones (booking 5, lookup 10,
+  availability 60; 429 `RATE_LIMITED` + `Retry-After: 60`, contador roto → 500).
+  Commit pendiente de hash.
+- 2026-09-27 RL-4: `supabase/tests/rate_limit.sql` (pgTAP, plan 10: 5 pasan,
+  6to 429 con retry, IP aislada, input inválido → raise). Sin Docker en esta
+  máquina (`docker: command not found`, 2026-09-27): `edge-test.sh` y
+  `test:db` quedan para el owner con stack. Verificado aquí: `npx vitest run`
+  131/131, `npx tsc --noEmit` exit 0, esbuild bundle OK de las 3 funciones.
 
 ## Next step
 

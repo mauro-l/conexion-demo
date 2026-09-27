@@ -6,8 +6,17 @@ import {
   WRITE_METHODS,
 } from '../_shared/http.ts';
 import { generateManagementToken, hashManagementToken } from '../_shared/management-token.ts';
+import {
+  checkRateLimit,
+  extractClientIp,
+  rateLimitResponse,
+} from '../_shared/rate-limit.ts';
 
 const FUNCTION_NAME = 'public-booking-lookup';
+// Freno 1: at most 10 lookups per IP per 60 s window (see
+// odd/tasks/rate-limit.md). Checked before minting or RPC work so a burst
+// adds no token, RPC or DB load.
+const RATE_LIMIT = 10;
 const MAX_BODY_BYTES = 1024;
 const MAX_NAME_CHARS = 80;
 
@@ -51,6 +60,19 @@ Deno.serve(async (req: Request): Promise<Response> => {
 
   const invalid = (code = 'INVALID_INPUT', message = 'Invalid input') =>
     errorResponse(code, message, 400, false, origin, true, WRITE_METHODS);
+
+  try {
+    const denied = rateLimitResponse(
+      await checkRateLimit(createServiceClient(), extractClientIp(req.headers), RATE_LIMIT),
+      origin,
+      WRITE_METHODS
+    );
+    if (denied) return denied;
+  } catch {
+    // Fail closed: without a counter (or without a DB client) nothing passes.
+    console.error(`${FUNCTION_NAME} rate limit unavailable`);
+    return errorResponse('INTERNAL_ERROR', 'Internal error', 500, false, origin, true, WRITE_METHODS);
+  }
 
   const rawBody = await req.text();
   if (rawBody.length === 0 || new TextEncoder().encode(rawBody).byteLength > MAX_BODY_BYTES) {
