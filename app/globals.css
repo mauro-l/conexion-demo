@@ -255,6 +255,22 @@ a {
   overflow-wrap: break-word;
 }
 
+/*
+ * The "Leer más" / "Leer menos" toggle of a clamped hero description. A plain
+ * text button in the shop's link colour, so it reads as an affordance without
+ * competing with the ticket calls to action.
+ */
+.tagline-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  margin: -8px 0 16px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--brass-dark);
+  cursor: pointer;
+}
+
 .info-list {
   display: flex;
   flex-direction: column;
@@ -589,25 +605,6 @@ a {
   transition: transform 0.18s ease;
 }
 
-.cal-jump-btn {
-  flex-shrink: 0;
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  border: 1px solid var(--line);
-  background: var(--card);
-  color: var(--ink);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.cal-jump-btn:hover {
-  border-color: var(--brass);
-}
-
-.cal-jump-btn:focus-visible,
 .icon-btn:focus-visible {
   outline: 2px solid var(--brass);
   outline-offset: 2px;
@@ -1011,6 +1008,17 @@ a {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+}
+
+/*
+ * The post-booking secondary exit. A `Link` wearing the shared secondary
+ * style, so it needs inline-block sizing, no link underline, and a gap from
+ * the primary "Agendar otra cita" button above it.
+ */
+.booking-confirm .btn-secondary {
+  display: inline-block;
+  margin-top: 10px;
+  text-decoration: none;
 }
 
 .booking-confirm .recap-row {

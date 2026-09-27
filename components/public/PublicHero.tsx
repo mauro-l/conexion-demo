@@ -1,6 +1,7 @@
 import Image from 'next/image';
 import type { ReactNode } from 'react';
 import type { Barberia } from '~/types/public';
+import { ExpandableText } from '~/components/public/ExpandableText';
 
 function initials(name: string): string {
   const parts = name.trim().split(/\s+/);
@@ -41,7 +42,7 @@ export function PublicHero({
         </div>
         <p className="eyebrow">Barbería</p>
         <h1 className="hero-title">{barberia.name}</h1>
-        {barberia.description ? <p className="tagline">{barberia.description}</p> : null}
+        {barberia.description ? <ExpandableText text={barberia.description} /> : null}
         {children}
       </section>
     </>

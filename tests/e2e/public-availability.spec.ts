@@ -406,8 +406,11 @@ test.describe('public availability surface', () => {
     await expect(pill.locator('.prof-chevron')).toHaveCount(1);
     await expect(page.locator('.prof-select-label')).toHaveCount(0);
 
-    // The calendar-jump control is present with its accessible label.
-    await expect(page.getByRole('button', { name: 'Ir a una fecha específica' })).toBeVisible();
+    // The calendar-jump control was removed (booking-ux-fixes): the date
+    // cards scroll natively, so no jump affordance renders anymore.
+    await expect(
+      page.getByRole('button', { name: 'Ir a una fecha específica' })
+    ).toHaveCount(0);
 
     // The default-selected open day renders its slots under a non-empty group heading.
     const openDay = avail.days.find((day) => day.slots.length > 0);
@@ -421,7 +424,10 @@ test.describe('public availability surface', () => {
     expect(html).not.toContain('reseñas');
   });
 
-  test('jumps to the selected date card without opening a date dialog', async ({ page }) => {
+  test('renders no calendar-jump control: the date cards stand alone', async ({ page }) => {
+    // The jump button was removed (booking-ux-fixes) because the scroller
+    // needs no jump affordance. This keeps the removal pinned: selecting a
+    // far card still works, and no jump control renders anywhere.
     const { services } = await catalog();
     const avail = await availability(services[0].publicServiceToken);
     const openDays = avail.days.filter((day) => day.slots.length > 0);
@@ -434,11 +440,9 @@ test.describe('public availability surface', () => {
     await card.click();
     await expect(card).toHaveAttribute('aria-pressed', 'true');
 
-    await page.getByRole('button', { name: 'Ir a una fecha específica' }).click();
-
-    // The jump only scrolls and focuses the selected card; it never opens a dialog
-    // and never navigates.
-    await expect(card).toBeFocused();
+    await expect(
+      page.getByRole('button', { name: 'Ir a una fecha específica' })
+    ).toHaveCount(0);
     await expect(page.locator('[role="dialog"]')).toHaveCount(0);
     expect(new URL(page.url()).pathname).toBe('/reservar');
   });

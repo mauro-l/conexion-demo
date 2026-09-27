@@ -38,7 +38,16 @@ const PHONE_MESSAGE = 'Revisá el teléfono: ingresalo con código de área, sin
  * close it, the first field takes focus on open, and focus returns to the
  * trigger on close.
  */
-export function ManageBookingLookup() {
+export function ManageBookingLookup({
+  shopWhatsappUrl = null,
+}: {
+  /**
+   * The shop's WhatsApp URL, threaded from the public context through
+   * `PublicFooter`. Optional: without it the repeated-failure help renders as
+   * plain text with no link.
+   */
+  shopWhatsappUrl?: string | null;
+}) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [nombre, setNombre] = useState('');
@@ -46,6 +55,13 @@ export function ManageBookingLookup() {
   const [telefono, setTelefono] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  /**
+   * Failed lookups that mean "these details match nothing": the not-found code
+   * and invalid input. Network and server errors are not the visitor's fault,
+   * so they never count. From the third one the form offers the WhatsApp way
+   * out instead of letting the visitor retry blindly.
+   */
+  const [failedAttempts, setFailedAttempts] = useState(0);
 
   const triggerRef = useRef<HTMLButtonElement>(null);
   const firstFieldRef = useRef<HTMLInputElement>(null);
@@ -114,6 +130,9 @@ export function ManageBookingLookup() {
       const code =
         (payload as { error?: { code?: string } } | null)?.error?.code ?? 'INTERNAL_ERROR';
       setError(MESSAGE_BY_CODE[code] ?? MESSAGE_BY_CODE.INTERNAL_ERROR);
+      if (code === 'PUBLIC_RESOURCE_NOT_FOUND' || code === 'INVALID_INPUT') {
+        setFailedAttempts((count) => count + 1);
+      }
     } catch {
       setError(MESSAGE_BY_CODE.NETWORK);
     } finally {
@@ -229,6 +248,23 @@ export function ManageBookingLookup() {
               {error ? (
                 <p className="form-error" role="alert">
                   {error}
+                </p>
+              ) : null}
+
+              {failedAttempts >= 3 ? (
+                <p className="hint">
+                  ¿Necesitás ayuda?{' '}
+                  {shopWhatsappUrl ? (
+                    <a
+                      href={shopWhatsappUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      Escribinos por WhatsApp.
+                    </a>
+                  ) : (
+                    'Escribinos por WhatsApp.'
+                  )}
                 </p>
               ) : null}
 

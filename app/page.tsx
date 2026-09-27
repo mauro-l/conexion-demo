@@ -49,7 +49,7 @@ export default async function PublicLandingPage() {
         <PublicInfo barberia={context.barberia} />
       </PublicHero>
       <ServiceCatalog services={catalog.services} />
-      <PublicFooter />
+      <PublicFooter shopWhatsappUrl={context.barberia.whatsappUrl} />
     </>
   );
 }

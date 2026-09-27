@@ -103,11 +103,11 @@ const BARBERS: Barber[] = [
   { name: 'Ana Gómez', alias: null, description: null, photoUrl: null },
 ];
 
-function renderCalendar(days: AvailabilityDay[]) {
+function renderCalendar(days: AvailabilityDay[], barbers: Barber[] = BARBERS) {
   return render(
     <AvailabilityCalendar
       days={days}
-      barbers={BARBERS}
+      barbers={barbers}
       bookingEndpoint={BOOKING_ENDPOINT}
       shopAddress={null}
     />
@@ -261,6 +261,35 @@ describe('AvailabilityCalendar', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '09:00' }));
 
+    expect(screen.getByRole('button', { name: 'Siguiente' })).toBeEnabled();
+  });
+
+  it('names the missing professional in the footer when a slot is staged without one', () => {
+    // Booking-ux-fixes changed the summary for this state: a staged slot with
+    // no professional no longer shows the generic "profesional, fecha y hora"
+    // line, it says exactly what is missing. The button still needs both.
+    renderCalendar(twoDays);
+
+    fireEvent.click(screen.getByRole('button', { name: '09:00' }));
+
+    expect(screen.getByRole('status')).toHaveTextContent('Elegí un profesional para continuar');
+    expect(screen.getByRole('button', { name: 'Siguiente' })).toBeDisabled();
+  });
+
+  it('preselects the only professional so a staged slot is enough for Siguiente', () => {
+    // Booking-ux-fixes: with a single barber there is nothing to choose, so
+    // the island starts with that professional selected instead of blocking
+    // the flow behind a one-option choice.
+    const single: Barber[] = [
+      { name: 'Solo Uno', alias: null, description: null, photoUrl: null },
+    ];
+    renderCalendar(twoDays, single);
+
+    expect(screen.getByRole('button', { name: /Solo Uno/ })).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '09:00' }));
+
+    expect(screen.getByRole('status')).toHaveTextContent('09:00 hs');
     expect(screen.getByRole('button', { name: 'Siguiente' })).toBeEnabled();
   });
 
