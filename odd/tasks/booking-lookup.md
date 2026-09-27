@@ -350,3 +350,18 @@ is why the verifier could not find it. The lookup query is correctly indexed.
    stack is usable for a preview. A `supabase functions serve` process dies with
    the shell that started it, so re-run `bash scripts/edge-serve.sh` if a preview
    503s.
+
+## Addendum (2026-09-27) — lookup-modal action parity (owner-authorized)
+
+The lookup modal's `Volver` / `Buscar turno` row now shares one size. The modal
+reuses `.booking-form`, whose default row is uneven by design (compact secondary
+vs. growing CTA); a `.modal-panel`-scoped rule gives both modal actions equal
+flex share, min-height, padding, and font, with a transparent border on the CTA
+so heights match. The booking-form action row is untouched.
+
+| Topic | Decision |
+|-------|----------|
+| Scope | CSS only, scoped to `.modal-panel`; no behavior or copy change |
+| E2E | `public-booking-lookup.spec.ts` asserts equal width and height in both themes, plus a backend-independent modal-sizing test |
+
+No RPC, Edge, or lookup-semantics change.

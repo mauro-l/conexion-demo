@@ -229,3 +229,15 @@ the E2E API reads return 503.
 - `Barberia.codigos_area_permitidos` = `{11,221}`.
 - Sequence default ACL grants `setval` to **both** `authenticated` and `anon`
   locally — the new table's sequence lock must be explicit.
+
+## Addendum (2026-09-27) — cancelled-view home exit (owner-authorized)
+
+The cancelled view keeps `Reservar otro turno` and now also renders the existing
+quiet `Volver al inicio` home exit (`/`), so a cancelled visitor can rebook or
+leave on equal terms. The exit was previously hidden in the cancelled state; it
+is now unconditional. No cancellation semantics change.
+
+| Topic | Decision |
+|-------|----------|
+| Scope | One additive link reusing the existing `.manage-exit` copy/style; behavior untouched |
+| Tests | `ManageBooking.test.tsx` asserts both exits with `href="/"` in the cancelled state |

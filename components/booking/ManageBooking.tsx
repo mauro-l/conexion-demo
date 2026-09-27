@@ -200,15 +200,13 @@ export function ManageBooking({
       ) : null}
 
       {/*
-       * A page reached from a link (an email, the confirmation) has no history
-       * to return to, so it needs its own way out. The cancelled state already
-       * carries the rebook call to action, which is the same destination.
+       * The cancelled state carries both exits: the primary rebook call to
+       * action above and the same quiet home link every other state shows
+       * below, so a cancelled visitor can rebook or leave on equal terms.
        */}
-      {booking.status === 'cancelado' ? null : (
-        <Link className="manage-exit" href="/">
-          Volver al inicio
-        </Link>
-      )}
+      <Link className="manage-exit" href="/">
+        Volver al inicio
+      </Link>
     </div>
   );
 }

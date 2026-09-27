@@ -118,6 +118,9 @@ describe('ManageBooking', () => {
       screen.getByText('Este turno fue cancelado. Podés reservar uno nuevo cuando quieras.')
     ).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Reservar otro turno' })).toHaveAttribute('href', '/');
+    const homeExit = screen.getByRole('link', { name: 'Volver al inicio' });
+    expect(homeExit).toHaveAttribute('href', '/');
+    expect(homeExit).toHaveClass('manage-exit');
   });
 
   it('shows the too-close note without a cancel button when cancellation is unavailable', () => {
@@ -142,7 +145,7 @@ describe('ManageBooking', () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 
-  it('offers a text link back home unless the booking is cancelled', () => {
+  it('offers the quiet home exit in every state, including cancelled', () => {
     const view = renderBooking();
     expect(screen.getByRole('link', { name: 'Volver al inicio' })).toHaveAttribute('href', '/');
 
@@ -153,6 +156,9 @@ describe('ManageBooking', () => {
         cancelEndpoint={cancelEndpoint}
       />
     );
-    expect(screen.queryByRole('link', { name: 'Volver al inicio' })).toBeNull();
+    const homeExit = screen.getByRole('link', { name: 'Volver al inicio' });
+    expect(homeExit).toHaveAttribute('href', '/');
+    expect(homeExit).toHaveClass('manage-exit');
+    expect(screen.getByRole('link', { name: 'Reservar otro turno' })).toHaveAttribute('href', '/');
   });
 });
