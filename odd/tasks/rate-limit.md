@@ -60,6 +60,8 @@ conseguir 8 números distintos sí tiene costo. Regla futura: 1 `IF` en
 - [ ] RL-2 Helper `supabase/functions/_shared/rate-limit.ts`: `checkRateLimit(ip,
   limite)` fail-closed (si falla el contador → rechazar). Extrae IP de
   `x-forwarded-for` / `cf-connecting-ip` con fallback seguro.
+  Evidencia: `rate-limit.test.ts` 13/13 verde (`npx vitest run
+  supabase/functions/_shared/rate-limit.test.ts`, 2026-09-27).
 - [ ] RL-3 Integrar en `public-booking` (5/min), `public-booking-lookup` (10/min) y
   `public-availability` (60/min). 429 con `Retry-After: 60`.
 - [ ] RL-4 Tests: `scripts/edge-test.sh` + caso SQL (5 pasan, 6to da 429; contador
@@ -104,7 +106,9 @@ Revisión nativa: candidata = work-unit commit; corre solo bajo el switch RDD de
   pendiente (ver nota abajo).
 - Evidencia base: 23/23 turnos con idempotencia + token OK (2026-09-27, ventana 3 h).
 - 2026-09-27 RL-1: migración `phase17_rate_limit` (tabla + `rate_limit_check` +
-  rollback). Commit pendiente de hash.
+  rollback). Commit `93e1a51`.
+- 2026-09-27 RL-2: helper `_shared/rate-limit.ts` + `rate-limit.test.ts`
+  (13/13 verde). Commit pendiente de hash.
 
 ## Next step
 
