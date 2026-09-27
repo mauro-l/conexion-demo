@@ -23,20 +23,20 @@ Out (explícito):
 
 ## Checklist
 
-- [ ] **BUX-1 — Salida post-reserva** (`components/booking/BookingForm.tsx`):
+- [x] **BUX-1 — Salida post-reserva** (`components/booking/BookingForm.tsx`):
       debajo de "Agendar otra cita" agregar `<Link href="/">Volver al inicio</Link>`
       con `btn-secondary`; mantener `onRestart`.
-- [ ] **BUX-2 — Siguiente deshabilitado**
+- [x] **BUX-2 — Siguiente deshabilitado**
       (`components/booking/AvailabilityCalendar.tsx`,
       `components/booking/AvailabilityCalendar.test.tsx`): si
       `barbers.length === 1`, preseleccionar (estado inicial); si hay varios y
       hay slot elegido pero falta profesional, el resumen dice
       "Elegí un profesional para continuar"; el botón sigue requiriendo
       slot + profesional; actualizar tests.
-- [ ] **BUX-3 — Icono calendario** (`components/booking/AvailabilityCalendar.tsx`):
+- [x] **BUX-3 — Icono calendario** (`components/booking/AvailabilityCalendar.tsx`):
       eliminar botón `cal-jump-btn`, `jumpToSelectedDate`, `selectedCardRef` y
       el `useRef` si queda sin uso; no tocar date-scroller ni slots.
-- [ ] **BUX-4 — Lookup/cancelación**
+- [x] **BUX-4 — Lookup/cancelación**
       (`components/booking/ManageBookingLookup.tsx`,
       `components/public/PublicFooter.tsx`, `app/page.tsx`,
       `components/booking/ManageBookingLookup.test.tsx`): mantener el mapa que
@@ -46,12 +46,12 @@ Out (explícito):
       `shopWhatsappUrl` viaja de `context.barberia.whatsappUrl` (`app/page.tsx`)
       por `PublicFooter` a `ManageBookingLookup` como prop opcional; si es null
       solo texto de ayuda sin enlace; actualizar tests.
-- [ ] **BUX-6 — Descripción larga** (`components/public/ExpandableText.tsx`,
+- [x] **BUX-6 — Descripción larga** (`components/public/ExpandableText.tsx`,
       `components/public/PublicHero.tsx`): `'use client'` + `useState`,
       recorte ~180 caracteres con "Leer más" / "Leer menos"; usarlo en
       PublicHero para `barberia.description`; mantener clase `tagline` y
       `white-space: pre-line`.
-- [ ] **BUX-7 — Verificación**: `npx vitest run components/booking/ components/public/`
+- [x] **BUX-7 — Verificación**: `npx vitest run components/booking/ components/public/`
       en verde; commit convencional sin Co-Authored-By, sin push ni PR.
 - [x] **BUX-8 — Estilo del enlace de salida** (`app/globals.css`,
       `components/booking/BookingForm.test.tsx`): ubicado debajo del CTA
