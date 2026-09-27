@@ -33,10 +33,10 @@ describe('PublicInfo', () => {
     expect(document.querySelectorAll('.info-row')).toHaveLength(2);
   });
 
-  it('prefixes the literal Hoy to the database hours value', () => {
+  it('renders the database hours value without a hardcoded prefix', () => {
     render(<PublicInfo barberia={barberia({ hours: '10:00–20:00' })} />);
 
-    expect(screen.getByText('Hoy 10:00–20:00')).toBeInTheDocument();
+    expect(screen.getByText('10:00–20:00')).toBeInTheDocument();
   });
 
   it('renders no fabricated defaults when every nullable field is empty', () => {
