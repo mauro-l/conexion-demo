@@ -34,8 +34,10 @@ Keeping them here means `supabase db push` sees no local migrations at all.
 | 7 | `phase15_public_cancellation.sql` | `phase15_public_cancellation_rollback.sql` |
 | 8 | `phase16_public_booking_lookup.sql` | `phase16_public_booking_lookup_rollback.sql` |
 | 9 | `phase18_availability_por_barbero.sql` | `phase18_availability_por_barbero_rollback.sql` |
+| 10 | `phase19_crear_turno_fail_closed.sql` | `phase19_crear_turno_fail_closed_rollback.sql` |
+| 11 | `phase20_crear_turno_app_hardening.sql` | `phase20_crear_turno_app_hardening_rollback.sql` |
 
-**Rollbacks run in reverse order: phase18 first, then phase16, phase15, phase14, phase13, phase12,
+**Rollbacks run in reverse order: phase20 first, then phase19, phase18, phase16, phase15, phase14, phase13, phase12,
 phase11, phase10, phase9.**
 
 ## Dependencies
@@ -62,6 +64,21 @@ phase11, phase10, phase9.**
   `CREATE OR REPLACE` (same signature, so no grant or PostgREST change): slots are now scoped
   to the requested service's barber instead of every active barber of the shop. Named phase18
   because the sibling branch `chore/phase17-fk-indexes` already owns the phase17 name.
+- `phase19` REQUIRES `phase15` and REPLACES only the `public_crear_turno` body with
+  `CREATE OR REPLACE` (same 10-argument signature, so no DROP and no grant or PostgREST
+  change): guards 3.7/3.8 fail closed on NULL schedule data on their own (defense in depth
+  behind 3.5), with error codes unchanged. Its rollback restores the phase15 body verbatim
+  and must run before phase15's rollback.
+- `phase20` REQUIRES nothing new and REPLACES only the `crear_turno` body with
+  `CREATE OR REPLACE` (same 7-argument signature, so no DROP and no grant or PostgREST
+  change). Note `crear_turno` lives OUTSIDE the phase chain: it is the app
+  surface (the only RPC executable by `authenticated`), not part of the public
+  web booking flow, so no earlier phase depends on it. It mirrors the phase19
+  fail-closed schedule/block guards as RAISE EXCEPTIONs, makes the phone
+  mandatory with the `cliente_telefono_formato_chk` pattern, narrows `origen`
+  to `presencial`/`whatsapp`, rejects NULL service durations, and resolves the
+  barber deterministically. Its rollback restores the live 2026-09-26 body
+  verbatim and must run before any older rollback only if phase20 was applied.
 
 ## Idempotency
 
