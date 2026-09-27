@@ -46,6 +46,22 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+describe('BookingForm post-booking exit link', () => {
+  it('renders "Volver al inicio" to "/" after "Agendar otra cita" in DOM order', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true, json: async () => ({ booking }) }));
+    renderForm();
+
+    await submitValidForm();
+
+    const restartButton = screen.getByRole('button', { name: 'Agendar otra cita' });
+    const homeLink = screen.getByRole('link', { name: 'Volver al inicio' });
+    expect(homeLink).toHaveAttribute('href', '/');
+    expect(restartButton.compareDocumentPosition(homeLink)).toBe(
+      Node.DOCUMENT_POSITION_FOLLOWING,
+    );
+  });
+});
+
 describe('BookingForm management confirmation link', () => {
   it('links to booking management when the successful response grants a token', async () => {
     const token = 'management /token?value';

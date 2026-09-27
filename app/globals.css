@@ -1012,13 +1012,37 @@ a {
 
 /*
  * The post-booking secondary exit. A `Link` wearing the shared secondary
- * style, so it needs inline-block sizing, no link underline, and a gap from
- * the primary "Agendar otra cita" button above it.
+ * style, stacked below the primary "Agendar otra cita" button at full width.
+ * Hover/focus/active stay on the warm palette; active settles on `--line`
+ * instead of a saturated fill, and the brief transition is silenced by the
+ * existing `prefers-reduced-motion` reset.
  */
 .booking-confirm .btn-secondary {
-  display: inline-block;
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
   margin-top: 10px;
+  text-align: center;
   text-decoration: none;
+  background: var(--card);
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.booking-confirm .btn-secondary:hover {
+  background: var(--paper);
+  border-color: var(--brass);
+  color: var(--brass-dark);
+}
+
+.booking-confirm .btn-secondary:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+
+.booking-confirm .btn-secondary:active {
+  background: var(--line);
+  border-color: var(--brass-dark);
+  color: var(--ink);
 }
 
 .booking-confirm .recap-row {

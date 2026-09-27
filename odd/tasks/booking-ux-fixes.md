@@ -24,8 +24,8 @@ Out (explícito):
 ## Checklist
 
 - [ ] **BUX-1 — Salida post-reserva** (`components/booking/BookingForm.tsx`):
-      junto a "Agendar otra cita" agregar `<Link href="/">Volver al inicio</Link>`
-      con `btn-secondary`; mantener `onRestart` y estilos existentes.
+      debajo de "Agendar otra cita" agregar `<Link href="/">Volver al inicio</Link>`
+      con `btn-secondary`; mantener `onRestart`.
 - [ ] **BUX-2 — Siguiente deshabilitado**
       (`components/booking/AvailabilityCalendar.tsx`,
       `components/booking/AvailabilityCalendar.test.tsx`): si
@@ -53,11 +53,18 @@ Out (explícito):
       `white-space: pre-line`.
 - [ ] **BUX-7 — Verificación**: `npx vitest run components/booking/ components/public/`
       en verde; commit convencional sin Co-Authored-By, sin push ni PR.
+- [x] **BUX-8 — Estilo del enlace de salida** (`app/globals.css`,
+      `components/booking/BookingForm.test.tsx`): ubicado debajo del CTA
+      principal, a ancho completo y apilado vertical, con transiciones breves y
+      estados hover, active sobrio y focus-visible coherentes con la paleta
+      cálida; sin fondo saturado en active.
 
 ## Criterios de aceptación
 
 1. Post-reserva muestra "Agendar otra cita" (mismo comportamiento) + enlace
-   secundario "Volver al inicio" a `/`.
+    secundario "Volver al inicio" debajo del CTA principal y a `/`; al pasar el
+    cursor muestra un hover visible, al presionar un active sobrio y el teclado
+    tiene foco visible.
 2. Con un solo profesional, el flujo arranca con ese profesional elegido y
    "Siguiente" se habilita al elegir slot; con varios, slot sin profesional
    muestra "Elegí un profesional para continuar" y "Siguiente" sigue
