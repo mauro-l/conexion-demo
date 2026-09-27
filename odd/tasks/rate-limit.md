@@ -111,7 +111,7 @@ Revisión nativa: candidata = work-unit commit; corre solo bajo el switch RDD de
   (13/13 verde). Commit `a37c70a`.
 - 2026-09-27 RL-3: límite integrado en las 3 funciones (booking 5, lookup 10,
   availability 60; 429 `RATE_LIMITED` + `Retry-After: 60`, contador roto → 500).
-  Commit pendiente de hash.
+  Commit `b5d6039`.
 - 2026-09-27 RL-4: `supabase/tests/rate_limit.sql` (pgTAP, plan 10: 5 pasan,
   6to 429 con retry, IP aislada, input inválido → raise). Sin Docker en esta
   máquina (`docker: command not found`, 2026-09-27): `edge-test.sh` y
