@@ -50,13 +50,13 @@ The manage-booking UI is functionally complete on the branch but has three revie
 
 | Work unit | Commit | Focused test + result | E2E / harness + result | Rollback boundary |
 |-----------|--------|----------------------|------------------------|-------------------|
-| Manage-flow UI polish (BMP-1–3) | _pending_ | Focused Vitest 19/19; full `npm test` 128/128; typecheck and lint clean | Playwright assertions written; execution blocked locally | Revert modal/action CSS, home link, and matching test/doc updates; booking behavior untouched |
+| Manage-flow UI polish (BMP-1–3) | `b975041` (pushed) | Focused Vitest 19/19; full `npm test` 128/128; typecheck and lint clean | Playwright assertions written; execution blocked locally | Revert modal/action CSS, home link, and matching test/doc updates; booking behavior untouched |
 
 Recorded checks: `npx vitest run components/booking/ManageBooking.test.tsx components/booking/ManageBookingLookup.test.tsx` — 19 passed (parent spot-check); `npm test` — 17 files, 128 passed; `npm run typecheck` — clean; `npm run lint` — clean.
 
 ## Observed results (2026-09-27)
 
-One coherent work unit, implemented and left uncommitted for parent verification:
+One coherent work unit, committed as `b975041` and pushed to `origin/feat/manage-booking-ui`:
 
 - Kept the in-progress `--danger-bg` / `--danger-fg` tokens (`#a8432f` light, `#b04a36` dark, white text) after verifying the commented ratios computationally: light 5.98:1, dark 5.41:1 — both >= 4.5:1, both clearly red.
 - Lookup-modal parity is a `.modal-panel`-scoped rule only; the booking-form action row keeps its existing sizing.
@@ -70,13 +70,13 @@ One coherent work unit, implemented and left uncommitted for parent verification
 
 ## Delivery decision
 
-- `origin/main...HEAD` is already 646 authored changed lines (545 additions, 101 deletions) before this work; default delivery strategy is `ask-on-risk`.
+- `origin/main...HEAD` is 836 changed lines after this work; default delivery strategy is `ask-on-risk`.
 - On 2026-09-27, the owner explicitly accepted one PR with `size:exception` for the accumulated branch. No chained-PR strategy is needed for this route.
-- Repo PR policy: every PR requires a relevant approved issue and exactly one `type:*` label. The only approved issue found (#7) is unrelated, so PR creation remains blocked until a relevant approved issue is available.
+- Repo PR policy: every PR requires a relevant approved issue and exactly one `type:*` label. The only approved issue found (#7) is unrelated, so the push is complete but PR creation remains blocked until a relevant approved issue is available.
 
 ## Next step
 
-Parent closes one Conventional work-unit commit and pushes it with the accepted `size:exception`. PR creation still needs a relevant approved issue.
+The implementation commit is pushed. Supply a relevant approved issue before the PR can be created; local Playwright E2E is also still blocked by missing build/environment prerequisites.
 
 ## Rationale
 
