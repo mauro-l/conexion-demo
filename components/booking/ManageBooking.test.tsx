@@ -27,7 +27,6 @@ function renderBooking(overrides: Partial<ManagedBooking> = {}) {
       booking={{ ...booking, ...overrides }}
       token="management-token"
       cancelEndpoint={cancelEndpoint}
-      shopWhatsappUrl={null}
     />
   );
 }
@@ -52,7 +51,7 @@ describe('ManageBooking', () => {
     expect(screen.getByText('Confirmado')).toBeInTheDocument();
   });
 
-  it('confirms cancellation inline, posts the token, and refreshes on success', async () => {
+  it('uses the two-step cancellation flow, posts the token, and refreshes on success', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       json: async () => ({ booking: { status: 'cancelado' } }),
@@ -61,8 +60,13 @@ describe('ManageBooking', () => {
     renderBooking();
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar turno' }));
-    expect(screen.getByText('¿Cancelar este turno?')).toBeInTheDocument();
-    fireEvent.click(screen.getByRole('button', { name: 'Sí, cancelar turno' }));
+    expect(
+      screen.getByText('¿Seguro que querés cancelar este turno? Esta acción no se puede deshacer.')
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'No, mantener' }));
+    expect(screen.getByRole('button', { name: 'Cancelar turno' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar turno' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sí, cancelar' }));
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     expect(fetchMock).toHaveBeenCalledWith(cancelEndpoint, {
@@ -71,6 +75,15 @@ describe('ManageBooking', () => {
       body: JSON.stringify({ token: 'management-token' }),
     });
     await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
+  });
+
+  it('styles the initial cancel action as secondary while keeping the final confirmation destructive', () => {
+    renderBooking();
+
+    expect(screen.getByRole('button', { name: 'Cancelar turno' })).toHaveClass('btn-secondary');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar turno' }));
+    expect(screen.getByRole('button', { name: 'Sí, cancelar' })).toHaveClass('btn-danger');
   });
 
   it('shows the mapped too-late message without refreshing', async () => {
@@ -85,7 +98,7 @@ describe('ManageBooking', () => {
     renderBooking();
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar turno' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Sí, cancelar turno' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sí, cancelar' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'Ya no se puede cancelar este turno porque está muy cerca del horario.'
@@ -93,11 +106,18 @@ describe('ManageBooking', () => {
     expect(refresh).not.toHaveBeenCalled();
   });
 
-  it('shows the already-cancelled note and no cancel button', () => {
+  it('shows the cancelled badge and note, a rebook link, and no cancel button', () => {
     renderBooking({ status: 'cancelado', canCancel: false });
 
     expect(screen.queryByRole('button', { name: 'Cancelar turno' })).toBeNull();
-    expect(screen.getByText('Este turno ya está cancelado.')).toBeInTheDocument();
+    expect(screen.getByText('Cancelado').closest('.status-badge')).toHaveClass(
+      'status-badge',
+      'cancelled'
+    );
+    expect(
+      screen.getByText('Este turno fue cancelado. Podés reservar uno nuevo cuando quieras.')
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Reservar otro turno' })).toHaveAttribute('href', '/');
   });
 
   it('shows the too-close note without a cancel button when cancellation is unavailable', () => {
@@ -114,11 +134,25 @@ describe('ManageBooking', () => {
     renderBooking();
 
     fireEvent.click(screen.getByRole('button', { name: 'Cancelar turno' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Sí, cancelar turno' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Sí, cancelar' }));
 
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'No pudimos conectarnos. Revisá la conexión y probá de nuevo.'
     );
     expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it('offers a text link back home unless the booking is cancelled', () => {
+    const view = renderBooking();
+    expect(screen.getByRole('link', { name: 'Volver al inicio' })).toHaveAttribute('href', '/');
+
+    view.rerender(
+      <ManageBooking
+        booking={{ ...booking, status: 'cancelado', canCancel: false }}
+        token="management-token"
+        cancelEndpoint={cancelEndpoint}
+      />
+    );
+    expect(screen.queryByRole('link', { name: 'Volver al inicio' })).toBeNull();
   });
 });

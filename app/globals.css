@@ -1185,3 +1185,202 @@ a {
   line-height: 1.5;
 }
 
+/* Standalone booking management recap; booking-confirm recap styles stay untouched. */
+.manage-booking .recap {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 6px 16px;
+  margin-bottom: 22px;
+}
+
+.manage-booking .recap-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 0;
+  font-size: 13.5px;
+}
+
+.manage-booking .recap-row + .recap-row {
+  border-top: 1px solid var(--line);
+}
+
+.manage-booking .recap-row svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+  color: var(--brass-dark);
+}
+
+.manage-booking .recap-row .label {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.manage-booking .recap-row .value {
+  font-weight: 600;
+}
+
+.manage-booking .status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 3px 8px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.manage-booking .status-badge .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.manage-booking .status-badge.confirmed {
+  background: color-mix(in srgb, var(--success) 16%, transparent);
+  color: var(--success);
+}
+
+.manage-booking .status-badge.confirmed .dot {
+  background: var(--success);
+}
+
+.manage-booking .status-badge.cancelled {
+  background: color-mix(in srgb, var(--error) 16%, transparent);
+  color: var(--error);
+}
+
+.manage-booking .status-badge.cancelled .dot {
+  background: var(--error);
+}
+
+.manage-booking .status-badge.neutral {
+  background: color-mix(in srgb, var(--muted) 16%, transparent);
+  color: var(--muted);
+}
+
+.manage-booking .status-badge.neutral .dot {
+  background: var(--muted);
+}
+
+/*
+ * The first-step cancel trigger shares the neutral secondary treatment used
+ * across the page: `--card` surface, `--line` border, `--ink` text with a
+ * brass hover/focus. Scoped to `.actions` so the confirm-panel row buttons
+ * keep their own layout. Every colour is a theme variable, so `:root` light
+ * and `:root[data-theme='dark']` both hold. The final "Sí, cancelar" button
+ * stays solid red (`.btn-danger` below).
+ */
+.manage-booking .actions .btn-secondary {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--card);
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.manage-booking .actions .btn-secondary:hover {
+  background: var(--paper);
+  border-color: var(--brass);
+  color: var(--brass-dark);
+}
+
+.manage-booking .actions .btn-secondary:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+
+.manage-booking .actions .btn-secondary:active {
+  background: var(--line);
+  border-color: var(--brass-dark);
+  color: var(--ink);
+}
+
+.manage-booking .btn-danger {
+  flex: 1;
+  padding: 13px 18px;
+  border: none;
+  border-radius: 10px;
+  background: var(--error);
+  color: var(--fill-strong);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.manage-booking .confirm-panel {
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+}
+
+.manage-booking .confirm-panel p {
+  margin: 0 0 14px;
+  color: var(--ink-soft);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+
+.manage-booking .confirm-panel .row {
+  display: flex;
+  gap: 10px;
+}
+
+.manage-booking .note-box {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  color: var(--ink-soft);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.manage-booking .note-box svg {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: var(--brass-dark);
+}
+
+.manage-booking .actions {
+  margin-top: 14px;
+}
+
+.manage-booking .form-error {
+  margin: 6px 0 0;
+  color: var(--error);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/*
+ * The rebook affordance is an anchor, not a button. The global `.btn-primary`
+ * is built for a flex row (`flex: 1`), so on its own anchor it shrinks to its
+ * label and stays inline. Give this instance the full width and centered label
+ * of the prototype's button, without touching the sticky-bar usage.
+ */
+.manage-booking .btn-primary {
+  display: block;
+  width: 100%;
+  text-align: center;
+  text-decoration: none;
+}
+
+/* Quiet text exit, below the actions; the link colour comes from the global `a`. */
+.manage-booking .manage-exit {
+  display: block;
+  margin-top: 18px;
+  text-align: center;
+  font-size: 13.5px;
+  font-weight: 600;
+}

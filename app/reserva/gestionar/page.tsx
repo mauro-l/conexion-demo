@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { ManageBooking } from '~/components/booking/ManageBooking';
+import { PublicHeader } from '~/components/public/PublicHeader';
 import { loadBookingSummary } from '~/lib/booking-manage.server';
 import { PublicApiError } from '~/lib/public-api.server';
 import { getBookingCancelEndpoint } from '~/lib/site-config.server';
@@ -23,14 +24,17 @@ const ERROR_MESSAGE: Record<string, string> = {
 
 function InvalidLinkState({ message }: { message: string }) {
   return (
-    <main className="page-main">
-      <p className="eyebrow">Gestionar turno</p>
-      <h1 className="hero-title">Enlace no válido</h1>
-      <p className="tagline">{message}</p>
-      <Link className="btn-outline-wide" href="/">
-        Volver al inicio
-      </Link>
-    </main>
+    <>
+      <PublicHeader />
+      <main className="page-main">
+        <p className="eyebrow">Gestionar turno</p>
+        <h1 className="hero-title">Enlace no válido</h1>
+        <p className="tagline">{message}</p>
+        <Link className="btn-primary" href="/">
+          Volver al inicio
+        </Link>
+      </main>
+    </>
   );
 }
 
@@ -63,35 +67,7 @@ export default async function ManageBookingPage({
 
   return (
     <>
-      <header className="modal-topbar">
-        <Link href="/" className="icon-btn" aria-label="Volver">
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden="true"
-          >
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-        </Link>
-        <span className="topbar-crumb">{booking.shopName}</span>
-        <Link href="/" className="icon-btn" aria-label="Cerrar">
-          <svg
-            width="18"
-            height="18"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden="true"
-          >
-            <path d="M18 6L6 18M6 6l12 12" />
-          </svg>
-        </Link>
-      </header>
+      <PublicHeader name={booking.shopName} />
       <main className="page-main">
         <p className="eyebrow">Gestionar turno</p>
         <h1 className="hero-title">Tu turno en {booking.shopName}</h1>
@@ -101,7 +77,6 @@ export default async function ManageBookingPage({
           booking={booking}
           token={token}
           cancelEndpoint={getBookingCancelEndpoint()}
-          shopWhatsappUrl={null}
         />
       </main>
     </>
