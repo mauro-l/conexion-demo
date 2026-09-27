@@ -7,8 +7,8 @@ vi.mock('next/navigation', () => ({ useRouter: vi.fn() }));
 
 const push = vi.fn();
 
-function renderLookup() {
-  return render(<ManageBookingLookup />);
+function renderLookup(props?: { shopWhatsappUrl?: string | null }) {
+  return render(<ManageBookingLookup {...props} />);
 }
 
 function openDialog() {
@@ -121,6 +121,92 @@ describe('ManageBookingLookup', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent(
       'No pudimos conectarnos. Revisá la conexión y probá de nuevo.'
     );
+  });
+
+  /**
+   * Booking-ux-fixes: only not-found/invalid-input answers count toward the
+   * WhatsApp help. Each submit is awaited through the fetch call count so a
+   * click never lands while `sending` is still true and gets swallowed.
+   */
+  async function failSearchMore(fetchMock: ReturnType<typeof vi.fn>, times: number) {
+    const seen = fetchMock.mock.calls.length;
+    for (let next = 1; next <= times; next++) {
+      fireEvent.click(screen.getByRole('button', { name: 'Buscar turno' }));
+      await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(seen + next));
+      await screen.findByRole('alert');
+    }
+  }
+
+  function notFoundFetch() {
+    return vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      json: async () => ({ error: { code: 'PUBLIC_RESOURCE_NOT_FOUND' } }),
+    });
+  }
+
+  it('shows plain-text help from the third not-found lookup when there is no WhatsApp URL', async () => {
+    const fetchMock = notFoundFetch();
+    vi.stubGlobal('fetch', fetchMock);
+    renderLookup();
+    openDialog();
+    fillIdentity();
+
+    await failSearchMore(fetchMock, 2);
+    expect(screen.queryByText(/¿Necesitás ayuda\?/)).toBeNull();
+
+    await failSearchMore(fetchMock, 1);
+    expect(screen.getByText(/¿Necesitás ayuda\?/)).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: 'Escribinos por WhatsApp.' })).toBeNull();
+    expect(push).not.toHaveBeenCalled();
+  });
+
+  it('links the WhatsApp help when the shop URL is provided', async () => {
+    const fetchMock = notFoundFetch();
+    vi.stubGlobal('fetch', fetchMock);
+    renderLookup({ shopWhatsappUrl: 'https://wa.me/5491100000000' });
+    openDialog();
+    fillIdentity();
+
+    await failSearchMore(fetchMock, 3);
+
+    const help = screen.getByRole('link', { name: 'Escribinos por WhatsApp.' });
+    expect(help).toHaveAttribute('href', 'https://wa.me/5491100000000');
+    expect(help).toHaveAttribute('target', '_blank');
+  });
+
+  it('does not count network errors toward the WhatsApp help', async () => {
+    const fetchMock = vi.fn().mockRejectedValue(new Error('offline'));
+    vi.stubGlobal('fetch', fetchMock);
+    renderLookup({ shopWhatsappUrl: 'https://wa.me/5491100000000' });
+    openDialog();
+    fillIdentity();
+
+    await failSearchMore(fetchMock, 3);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'No pudimos conectarnos. Revisá la conexión y probá de nuevo.'
+    );
+    expect(screen.queryByText(/¿Necesitás ayuda\?/)).toBeNull();
+  });
+
+  it('does not count server errors toward the WhatsApp help', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: { code: 'INTERNAL_ERROR' } }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    renderLookup();
+    openDialog();
+    fillIdentity();
+
+    await failSearchMore(fetchMock, 3);
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(
+      'No pudimos buscar tu turno. Probá de nuevo en un momento.'
+    );
+    expect(screen.queryByText(/¿Necesitás ayuda\?/)).toBeNull();
   });
 
   it('closes on Escape and restores focus to the trigger', () => {

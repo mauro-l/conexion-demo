@@ -222,6 +222,9 @@ export function BookingForm({
         <button type="button" className="btn-outline-wide" onClick={onRestart}>
           Agendar otra cita
         </button>
+        <Link href="/" className="btn-secondary">
+          Volver al inicio
+        </Link>
       </div>
     );
   }

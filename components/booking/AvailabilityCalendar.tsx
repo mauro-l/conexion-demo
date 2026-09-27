@@ -155,14 +155,18 @@ export function AvailabilityCalendar({
     slot: null,
     formOpen: false,
   }));
-  const selectedCardRef = useRef<HTMLButtonElement | null>(null);
 
   /**
    * Professional selection. `null` means no professional chosen yet ("Seleccione
    * profesional"). The list is server-owned, so the index is the stable identity
    * here; the booking RPC still resolves the barber from the chosen service.
+   * When there is a single professional there is nothing to choose, so it
+   * starts preselected instead of blocking `Siguiente` behind a choice with
+   * only one option.
    */
-  const [professional, setProfessional] = useState<number | null>(null);
+  const [professional, setProfessional] = useState<number | null>(() =>
+    barbers.length === 1 ? 0 : null
+  );
   const [professionalOpen, setProfessionalOpen] = useState(false);
   const professionalWrapRef = useRef<HTMLDivElement | null>(null);
   const professionalListId = useId();
@@ -224,17 +228,6 @@ export function AvailabilityCalendar({
   function restartBooking() {
     setSelected({ dayIndex: -1, slot: null, formOpen: false });
     startRefresh(() => router.refresh());
-  }
-
-  /**
-   * Static calendar-jump affordance: it only brings the selected card into view
-   * and focuses it. It never opens a date dialog, fetches, or navigates.
-   */
-  function jumpToSelectedDate() {
-    const card = selectedCardRef.current;
-    if (!card) return;
-    card.scrollIntoView?.({ behavior: 'smooth', block: 'nearest', inline: 'center' });
-    card.focus?.();
   }
 
   return (
@@ -313,25 +306,6 @@ export function AvailabilityCalendar({
             </div>
           ) : null}
         </div>
-        <button
-          type="button"
-          className="cal-jump-btn"
-          aria-label="Ir a una fecha específica"
-          onClick={jumpToSelectedDate}
-        >
-          <svg
-            width="17"
-            height="17"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            aria-hidden="true"
-          >
-            <rect x="3" y="5" width="18" height="16" rx="2" />
-            <path d="M3 10h18M8 3v4M16 3v4" />
-          </svg>
-        </button>
       </div>
 
       <p className="date-label">Elegí una fecha</p>
@@ -344,7 +318,6 @@ export function AvailabilityCalendar({
           return (
             <button
               key={day.date}
-              ref={isSelected ? selectedCardRef : null}
               type="button"
               className={`date-card${isSelected ? ' selected' : ''}`}
               aria-pressed={isSelected}
@@ -432,10 +405,14 @@ export function AvailabilityCalendar({
         <div className="sticky-bar">
           <p className="sticky-summary" role="status">
             {selected.slot ? (
-              <>
-                <strong>{formatDay(selectedDay.date, selectedDay.day)}</strong>
-                {formatTime(selected.slot.start)} hs
-              </>
+              professional === null ? (
+                'Elegí un profesional para continuar'
+              ) : (
+                <>
+                  <strong>{formatDay(selectedDay.date, selectedDay.day)}</strong>
+                  {formatTime(selected.slot.start)} hs
+                </>
+              )
             ) : (
               'Elegí profesional, fecha y hora para continuar'
             )}

@@ -14,7 +14,16 @@ const LOGIN_URL = 'https://proyecto-final-rn.vercel.app/';
  * opens in a new tab and severs the opener — a visitor part-way through a
  * booking should not lose the landing.
  */
-export function PublicFooter() {
+export function PublicFooter({
+  shopWhatsappUrl = null,
+}: {
+  /**
+   * The shop's WhatsApp URL from the public context. Threaded through to the
+   * booking-lookup island for its repeated-failure help; optional so the
+   * footer still renders without it.
+   */
+  shopWhatsappUrl?: string | null;
+}) {
   return (
     <footer className="site-footer">
       <div className="footer-links">
@@ -26,7 +35,7 @@ export function PublicFooter() {
         >
           Iniciar sesión
         </a>
-        <ManageBookingLookup />
+        <ManageBookingLookup shopWhatsappUrl={shopWhatsappUrl} />
       </div>
       <p className="footer-credit">
         Sistema de reservas hecho por <a href="mailto:maurol.dev@gmail.com">mauro.dev</a> — ¿Querés
