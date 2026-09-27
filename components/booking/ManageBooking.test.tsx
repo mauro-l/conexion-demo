@@ -77,6 +77,15 @@ describe('ManageBooking', () => {
     await waitFor(() => expect(refresh).toHaveBeenCalledTimes(1));
   });
 
+  it('styles the initial cancel action as secondary while keeping the final confirmation destructive', () => {
+    renderBooking();
+
+    expect(screen.getByRole('button', { name: 'Cancelar turno' })).toHaveClass('btn-secondary');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Cancelar turno' }));
+    expect(screen.getByRole('button', { name: 'Sí, cancelar' })).toHaveClass('btn-danger');
+  });
+
   it('shows the mapped too-late message without refreshing', async () => {
     vi.stubGlobal(
       'fetch',

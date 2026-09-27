@@ -176,7 +176,7 @@ export function ManageBooking({
           <div className="actions">
             <button
               type="button"
-              className="btn-danger-outline"
+              className="btn-secondary"
               onClick={() => setConfirming(true)}
             >
               Cancelar turno

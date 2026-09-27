@@ -1268,20 +1268,37 @@ a {
   background: var(--muted);
 }
 
-.manage-booking .btn-danger-outline {
+/*
+ * The first-step cancel trigger shares the neutral secondary treatment used
+ * across the page: `--card` surface, `--line` border, `--ink` text with a
+ * brass hover/focus. Scoped to `.actions` so the confirm-panel row buttons
+ * keep their own layout. Every colour is a theme variable, so `:root` light
+ * and `:root[data-theme='dark']` both hold. The final "Sí, cancelar" button
+ * stays solid red (`.btn-danger` below).
+ */
+.manage-booking .actions .btn-secondary {
+  display: block;
   width: 100%;
-  padding: 13px 18px;
-  border: 1px solid var(--error);
-  border-radius: 10px;
-  background: none;
-  color: var(--error);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
+  box-sizing: border-box;
+  background: var(--card);
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 
-.manage-booking .btn-danger-outline:hover {
-  background: color-mix(in srgb, var(--error) 8%, transparent);
+.manage-booking .actions .btn-secondary:hover {
+  background: var(--paper);
+  border-color: var(--brass);
+  color: var(--brass-dark);
+}
+
+.manage-booking .actions .btn-secondary:focus-visible {
+  outline: 2px solid var(--brass);
+  outline-offset: 2px;
+}
+
+.manage-booking .actions .btn-secondary:active {
+  background: var(--line);
+  border-color: var(--brass-dark);
+  color: var(--ink);
 }
 
 .manage-booking .btn-danger {
