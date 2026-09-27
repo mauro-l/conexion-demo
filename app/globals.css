@@ -12,6 +12,15 @@
   --success: #4f7a57;
   --radius: 16px;
 
+  /*
+   * Destructive-action surface. The error text token stays untouched; these
+   * tokens exist so the solid final-cancellation button keeps a white
+   * foreground at WCAG >= 4.5:1 in both themes (light #a8432f/white = 5.98,
+   * dark #b04a36/white = 5.41, both clearly red).
+   */
+  --danger-bg: #a8432f;
+  --danger-fg: #ffffff;
+
   /* Strong ink, first-class in both themes: the light prototype's `--ink`. */
   --fill-strong: #1a1a1a;
   /* Prototype shadows, kept theme-scoped so neither value leaks across themes. */
@@ -50,6 +59,10 @@
   --disabled: #46443e;
   --error: #d9705a;
   --success: #7ca37f;
+
+  /* Dark-theme destructive surface: white on #b04a36 = 5.41:1. */
+  --danger-bg: #b04a36;
+  --danger-fg: #ffffff;
 
   --fill-strong: #0e0e0f;
   --brand-mark-shadow: 0 2px 6px rgba(0, 0, 0, 0.35);
@@ -953,6 +966,38 @@ a {
   flex: 1;
 }
 
+/*
+ * Lookup-modal action parity. The modal reuses `.booking-form`, whose default
+ * row pairs a compact `.btn-secondary` (`flex: 0 0 auto`, 14px) with a growing
+ * `.ticket-cta` (13.5px, tighter padding) — fine for the booking form, uneven
+ * in the narrow modal. Scoped to `.modal-panel` so the booking-form action row
+ * keeps its own sizing. Equal flex share gives equal widths; one min-height,
+ * padding, font, and border width (transparent on the CTA) gives equal heights.
+ */
+.modal-panel .booking-form .form-actions {
+  align-items: stretch;
+}
+
+.modal-panel .booking-form .form-actions .btn-secondary,
+.modal-panel .booking-form .form-actions .ticket-cta {
+  flex: 1 1 0;
+  min-width: 0;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 13px 18px;
+  font-size: 14px;
+  line-height: 1.25;
+  border-width: 1px;
+  border-style: solid;
+}
+
+.modal-panel .booking-form .form-actions .ticket-cta {
+  border-color: transparent;
+}
+
 .booking-confirm {
   text-align: center;
 }
@@ -1306,8 +1351,8 @@ a {
   padding: 13px 18px;
   border: none;
   border-radius: 10px;
-  background: var(--error);
-  color: var(--fill-strong);
+  background: var(--danger-bg);
+  color: var(--danger-fg);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
