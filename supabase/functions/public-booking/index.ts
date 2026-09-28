@@ -205,6 +205,63 @@ Deno.serve(async (req: Request): Promise<Response> => {
     }
 
     const { managementTokenRegistered, ...publicPayload } = payload;
+
+    // Fanout Web Push (fire-and-forget): turno_id/barbero_id se resuelven solo
+    // en el Edge con service_role y NUNCA se agregan a la respuesta al browser.
+    // Un fallo de push NUNCA rompe el 201: solo logs.
+    void (async () => {
+      try {
+        const { data: idemRow, error: idemError } = await sb
+          .from('BookingIdempotency')
+          .select('turno_id')
+          .eq('idempotency_key', idempotencyKey)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        const turnoId = (idemRow as { turno_id?: number | null } | null)?.turno_id;
+        if (idemError || typeof turnoId !== 'number') {
+          console.warn('[push] no se pudo resolver turno_id para notificar');
+          return;
+        }
+        const { data: turnoRow, error: turnoError } = await sb
+          .from('Turno')
+          .select('id, barbero_id')
+          .eq('id', turnoId)
+          .maybeSingle();
+        const barberoId = (turnoRow as { barbero_id?: number | null } | null)?.barbero_id;
+        if (turnoError || typeof barberoId !== 'number') {
+          console.warn('[push] no se pudo resolver barbero_id para notificar');
+          return;
+        }
+        const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+        const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+        const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+        if (supabaseUrl === '' || serviceRoleKey === '' || anonKey === '') {
+          console.warn('[push] no se pudo notificar: faltan env SUPABASE_*');
+          return;
+        }
+        const pushRes = await fetch(`${supabaseUrl}/functions/v1/send-push`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${serviceRoleKey}`,
+            apikey: anonKey,
+          },
+          body: JSON.stringify({
+            barbero_id: barberoId,
+            evento: 'reserva',
+            titulo: 'Nueva reserva web',
+            cuerpo: `Nuevo turno reservado para ${start}`,
+            turno_id: turnoId,
+          }),
+        });
+        const pushResult = await pushRes.json().catch(() => null);
+        console.log('[push] send-push:', pushRes.status, pushResult);
+      } catch (e) {
+        console.warn('[push] no se pudo notificar:', e instanceof Error ? e.message : e);
+      }
+    })();
+
     if (managementTokenRegistered === true) {
       return jsonResponse(
         {
