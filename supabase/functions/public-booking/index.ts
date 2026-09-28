@@ -212,8 +212,7 @@ Deno.serve(async (req: Request): Promise<Response> => {
         }
         const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
         const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-        const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
-        if (supabaseUrl === '' || serviceRoleKey === '' || anonKey === '') {
+        if (supabaseUrl === '' || serviceRoleKey === '') {
           console.warn('[push] no se pudo notificar: faltan env SUPABASE_*');
           return;
         }
@@ -221,8 +220,10 @@ Deno.serve(async (req: Request): Promise<Response> => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            // Misma key en ambos headers: el gateway rechaza pares
+            // apikey/Authorization inconsistentes (401 Conflicting API keys).
             Authorization: `Bearer ${serviceRoleKey}`,
-            apikey: anonKey,
+            apikey: serviceRoleKey,
           },
           body: JSON.stringify({
             barbero_id: barberoId,
